@@ -12,8 +12,10 @@ $userId = (int) $_SESSION['user_id'];
 
 // Load user (for role/nav/profile link)
 $userStmt = $connection->prepare('SELECT id, name, role FROM users WHERE id = ? LIMIT 1');
-$userStmt->execute([$userId]);
-$currentUser = $userStmt->fetch();
+$userStmt->bind_param('i', $userId);
+$userStmt->execute();
+$userResult = $userStmt->get_result();
+$currentUser = $userResult ? $userResult->fetch_assoc() : null;
 if (!$currentUser) {
   // If session is stale, force logout
   header('Location: logout.php');
@@ -22,8 +24,10 @@ if (!$currentUser) {
 
 // Load achievements (defaults to zeros if not present)
 $achStmt = $connection->prepare('SELECT sqli, idor, xss, cookie, privesc FROM achievements WHERE user_id = ? LIMIT 1');
-$achStmt->execute([$userId]);
-$achRow = $achStmt->fetch() ?: ['sqli' => 0, 'idor' => 0, 'xss' => 0, 'cookie' => 0, 'privesc' => 0];
+$achStmt->bind_param('i', $userId);
+$achStmt->execute();
+$achResult = $achStmt->get_result();
+$achRow = ($achResult ? $achResult->fetch_assoc() : null) ?: ['sqli' => 0, 'idor' => 0, 'xss' => 0, 'cookie' => 0, 'privesc' => 0];
 
 $achievements = [
   'sqli' => (bool) ($achRow['sqli'] ?? 0),
