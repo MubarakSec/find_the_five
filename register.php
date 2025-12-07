@@ -17,15 +17,19 @@ session_start();
 <body>
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="dashboard.php">Find The Five</a>
+      <a class="navbar-brand fw-bold" href="dashboard.php" data-i18n="brand">Find The Five</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
-          <li class="nav-item"><a class="nav-link" href="index.php">Login</a></li>
-          <li class="nav-item ms-2"><a class="btn btn-primary" href="register.php">Register</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.php" data-i18n="nav_login">Login</a></li>
+          <li class="nav-item ms-2"><a class="btn btn-primary" href="register.php" data-i18n="nav_register">Register</a></li>
         </ul>
+        <div class="ms-3 d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-lang-select="en">EN</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-lang-select="ar">ع</button>
+        </div>
       </div>
     </div>
   </nav>
@@ -33,50 +37,50 @@ session_start();
   <main class="container" style="max-width: 960px;">
     <div class="row align-items-center page-hero">
       <div class="col-lg-5">
-        <div class="pill mb-3"><i class="fa-solid fa-user-plus"></i> Create your lab account</div>
-        <h1 class="mb-3">Join the security challenge</h1>
-        <p class="muted">Progress, achievements, and leaderboard are simulated locally. Backend will be implemented later by students.</p>
+        <div class="pill mb-3" data-i18n="register_badge"><i class="fa-solid fa-user-plus"></i> Create your lab account</div>
+        <h1 class="mb-3" data-i18n="register_title">Join the security challenge</h1>
+        <p class="muted" data-i18n="register_subtitle">Progress, achievements, and leaderboard are simulated locally. Backend will be implemented later by students.</p>
         <ul class="lab-steps mt-3">
-          <li>Complete 5 labs to earn <span class="mini-flag">Certified Hacker</span></li>
-          <li>Use only your browser — no external interceptors</li>
-          <li>All data is placeholder; feel free to experiment</li>
+          <li data-i18n-html="register_tip1">Complete 5 labs to earn <span class="mini-flag">Certified Hacker</span></li>
+          <li data-i18n="register_tip2">Use only your browser — no external interceptors</li>
+          <li data-i18n="register_tip3">All data is placeholder; feel free to experiment</li>
         </ul>
       </div>
       <div class="col-lg-7 mt-4 mt-lg-0">
         <div class="card p-4 hero-card">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Register</h5>
-            <span class="chip">UI only</span>
+            <h5 class="mb-0" data-i18n="register_form_title">Register</h5>
+            <span class="chip" data-i18n="ui_only_chip">UI only</span>
           </div>
           <form>
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label">Full Name</label>
-                <input type="text" class="form-control" placeholder="Ada Lovelace">
+                <label class="form-label" data-i18n="field_full_name">Full Name</label>
+                <input type="text" class="form-control" placeholder="Ada Lovelace" data-i18n-placeholder="placeholder_full_name">
               </div>
               <div class="col-md-6">
-                <label class="form-label">Username</label>
-                <input type="text" class="form-control" placeholder="ada">
+                <label class="form-label" data-i18n="field_username">Username</label>
+                <input type="text" class="form-control" placeholder="ada" data-i18n-placeholder="placeholder_username">
               </div>
             </div>
             <div class="mt-3">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-control" placeholder="you@example.com">
+              <label class="form-label" data-i18n="field_email">Email</label>
+              <input type="email" class="form-control" placeholder="you@example.com" data-i18n-placeholder="placeholder_email">
             </div>
             <div class="row g-3 mt-3">
               <div class="col-md-6">
-                <label class="form-label">Password</label>
-                <input type="password" class="form-control" placeholder="••••••••">
+                <label class="form-label" data-i18n="field_password">Password</label>
+                <input type="password" class="form-control" placeholder="••••••••" data-i18n-placeholder="placeholder_password">
               </div>
               <div class="col-md-6">
-                <label class="form-label">Confirm Password</label>
-                <input type="password" class="form-control" placeholder="••••••••">
+                <label class="form-label" data-i18n="field_confirm_password">Confirm Password</label>
+                <input type="password" class="form-control" placeholder="••••••••" data-i18n-placeholder="placeholder_password">
               </div>
             </div>
-            <button type="button" class="btn btn-primary w-100 mt-4">Create account (UI only)</button>
+            <button type="button" class="btn btn-primary w-100 mt-4" data-i18n="register_button">Create account (UI only)</button>
           </form>
           <div class="text-center mt-3">
-            <small class="muted">Already registered? <a href="index.php">Login</a></small>
+            <small class="muted" data-i18n-html="register_switch">Already registered? <a href="index.php">Login</a></small>
           </div>
         </div>
       </div>

@@ -17,17 +17,21 @@ session_start();
 <body>
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="dashboard.php">Find The Five</a>
+      <a class="navbar-brand fw-bold" href="dashboard.php" data-i18n="brand">Find The Five</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
-          <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1">Profile</a></li>
-          <li class="nav-item"><a class="nav-link active" aria-current="page" href="admin.php">Admin</a></li>
-          <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php">Logout</a></li>
+          <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
+          <li class="nav-item"><a class="nav-link active" aria-current="page" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
+        <div class="ms-3 d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-lang-select="en">EN</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-lang-select="ar">ع</button>
+        </div>
       </div>
     </div>
   </nav>
@@ -35,30 +39,30 @@ session_start();
   <main class="container page-hero">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <div class="pill mb-2"><i class="fa-solid fa-user-gear"></i> Security Supervisor Panel</div>
-        <h2 class="mb-1">User management (mock)</h2>
-        <p class="muted mb-0">This panel is for admins only. Buttons are placeholders until backend logic is added.</p>
+        <div class="pill mb-2" data-i18n="admin_badge"><i class="fa-solid fa-user-gear"></i> Security Supervisor Panel</div>
+        <h2 class="mb-1" data-i18n="admin_title">User management (mock)</h2>
+        <p class="muted mb-0" data-i18n="admin_subtitle">This panel is for admins only. Buttons are placeholders until backend logic is added.</p>
       </div>
-      <span class="chip pill-warning">Admin view</span>
+      <span class="chip pill-warning" data-i18n="admin_chip">Admin view</span>
     </div>
 
     <div class="card p-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Users</h5>
+        <h5 class="mb-0" data-i18n="admin_table_title">Users</h5>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-danger btn-sm" type="button">Reset all progress</button>
-          <button class="btn btn-outline-secondary btn-sm" type="button">Export CSV</button>
+          <button class="btn btn-outline-danger btn-sm" type="button" data-i18n="admin_reset_all">Reset all progress</button>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-i18n="admin_export">Export CSV</button>
         </div>
       </div>
       <div class="table-responsive">
         <table class="table align-middle">
           <thead>
             <tr>
-              <th scope="col">User</th>
-              <th scope="col">Email</th>
-              <th scope="col">Role</th>
-              <th scope="col">Achievements</th>
-              <th scope="col">Actions</th>
+              <th scope="col" data-i18n="admin_col_user">User</th>
+              <th scope="col" data-i18n="admin_col_email">Email</th>
+              <th scope="col" data-i18n="admin_col_role">Role</th>
+              <th scope="col" data-i18n="admin_col_achievements">Achievements</th>
+              <th scope="col" data-i18n="admin_col_actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -68,8 +72,8 @@ session_start();
               <td><span class="chip">user</span></td>
               <td><span class="chip pill-success">2 / 5</span></td>
               <td class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm" type="button">Reset progress</button>
-                <button class="btn btn-outline-danger btn-sm" type="button">Delete</button>
+                <button class="btn btn-outline-primary btn-sm" type="button" data-i18n="admin_reset_btn">Reset progress</button>
+                <button class="btn btn-outline-danger btn-sm" type="button" data-i18n="admin_delete_btn">Delete</button>
               </td>
             </tr>
             <tr>
@@ -78,8 +82,8 @@ session_start();
               <td><span class="chip">user</span></td>
               <td><span class="chip pill-warning">3 / 5</span></td>
               <td class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm" type="button">Reset progress</button>
-                <button class="btn btn-outline-danger btn-sm" type="button">Delete</button>
+                <button class="btn btn-outline-primary btn-sm" type="button" data-i18n="admin_reset_btn">Reset progress</button>
+                <button class="btn btn-outline-danger btn-sm" type="button" data-i18n="admin_delete_btn">Delete</button>
               </td>
             </tr>
             <tr>
@@ -88,8 +92,8 @@ session_start();
               <td><span class="chip pill-success">admin</span></td>
               <td><span class="chip pill-success">5 / 5</span></td>
               <td class="d-flex gap-2">
-                <button class="btn btn-outline-primary btn-sm" type="button">Reset progress</button>
-                <button class="btn btn-outline-danger btn-sm" type="button">Delete</button>
+                <button class="btn btn-outline-primary btn-sm" type="button" data-i18n="admin_reset_btn">Reset progress</button>
+                <button class="btn btn-outline-danger btn-sm" type="button" data-i18n="admin_delete_btn">Delete</button>
               </td>
             </tr>
           </tbody>

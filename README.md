@@ -31,12 +31,12 @@ Every PHP file starts with `session_start()` and contains comments like “TODO:
 
 Labs and flags (client side)
 ----------------------------
-- SQLi: classic `' OR '1'='1` bypass reveals flag.
-- IDOR: change `?id=` in `idor_lab.php` to load another record.
-- Stored XSS: inject `<script>` in the bio to trigger the flag.
-- Cookie tampering: edit `access_level` cookie to `elite`/`admin`.
-- Privilege escalation: set `"role": "admin"` in request payload.
-- Final flag: enter the master code from the page source or finish all five achievements to reveal it.
+- SQLi: classic `' OR '1'='1` bypass reveals flag (set by JS only).
+- IDOR: change `?id=` in `idor_lab.php` to load another record (flag set by JS).
+- Stored XSS: inject `<script>` in the bio to trigger the flag (flag set by JS).
+- Cookie tampering: edit `access_level` cookie to `elite`/`admin` (flag set by JS).
+- Privilege escalation: set `"role": "admin"` in request payload (flag set by JS).
+- Final flag: enter the master code from the page source or finish all five achievements to reveal it (flag set by JS).
 
 Notes
 -----

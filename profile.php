@@ -17,17 +17,21 @@ session_start();
 <body>
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="dashboard.php">Find The Five</a>
+      <a class="navbar-brand fw-bold" href="dashboard.php" data-i18n="brand">Find The Five</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
-          <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php">Admin</a></li>
-          <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php">Logout</a></li>
+          <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
+          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
+        <div class="ms-3 d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-lang-select="en">EN</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-lang-select="ar">ع</button>
+        </div>
       </div>
     </div>
   </nav>
@@ -35,11 +39,11 @@ session_start();
   <main class="container page-hero" style="max-width: 980px;">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <div class="pill mb-2"><i class="fa-solid fa-user"></i> Profile viewer</div>
-        <h2 class="mb-0">Security Trainee Profile</h2>
-        <small class="muted">Profile data is static for now — backend to be wired later.</small>
+        <div class="pill mb-2" data-i18n="profile_badge"><i class="fa-solid fa-user"></i> Profile viewer</div>
+        <h2 class="mb-0" data-i18n="profile_title">Security Trainee Profile</h2>
+        <small class="muted" data-i18n="profile_subtitle">Profile data is static for now — backend to be wired later.</small>
       </div>
-      <a href="update_profile.php" class="btn btn-primary">Edit profile</a>
+      <a href="update_profile.php" class="btn btn-primary" data-i18n="profile_edit_btn">Edit profile</a>
     </div>
 
     <div class="row g-4">
@@ -58,31 +62,31 @@ session_start();
       <div class="col-lg-8">
         <div class="card p-4 mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">About</h5>
-            <small class="muted">Editable in update_profile.php</small>
+            <h5 class="mb-0" data-i18n="profile_about_title">About</h5>
+            <small class="muted" data-i18n="profile_about_note">Editable in update_profile.php</small>
           </div>
-          <p id="bioText">Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.</p>
-          <div class="flag hidden-flag" id="profileFlag">FLAG{PROFILE_VIEW_ONLY}</div>
+          <p id="bioText" data-i18n="profile_bio_text">Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.</p>
+          <div class="flag hidden-flag" id="profileFlag" data-flag-key="profile"></div>
         </div>
         <div class="card p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Recent labs</h5>
-            <a class="small" href="dashboard.php">View all</a>
+            <h5 class="mb-0" data-i18n="profile_recent_title">Recent labs</h5>
+            <a class="small" href="dashboard.php" data-i18n="profile_view_all">View all</a>
           </div>
           <div class="d-grid gap-3">
             <div class="soft-card p-3 d-flex align-items-center">
               <i class="fa-solid fa-database text-primary me-3"></i>
               <div>
-                <div class="fw-semibold">SQL Injection lab</div>
-                <small class="muted">Try `' OR '1'='1`</small>
+                <div class="fw-semibold" data-i18n="profile_recent_sqli">SQL Injection lab</div>
+                <small class="muted" data-i18n-html="profile_recent_sqli_hint">Try `' OR '1'='1`</small>
               </div>
               <span class="ms-auto badge bg-light text-dark" data-achievement="sqli" data-status>Locked</span>
             </div>
             <div class="soft-card p-3 d-flex align-items-center">
               <i class="fa-solid fa-code text-primary me-3"></i>
               <div>
-                <div class="fw-semibold">Stored XSS lab</div>
-                <small class="muted">Update your bio unsafely</small>
+                <div class="fw-semibold" data-i18n="profile_recent_xss">Stored XSS lab</div>
+                <small class="muted" data-i18n="profile_recent_xss_hint">Update your bio unsafely</small>
               </div>
               <span class="ms-auto badge bg-light text-dark" data-achievement="xss" data-status>Locked</span>
             </div>
