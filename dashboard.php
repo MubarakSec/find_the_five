@@ -1,11 +1,56 @@
 <?php
 session_start();
-// TODO: Check login session and restrict to authenticated users
-// TODO: Load achievements from database
-// TODO: Persist progress updates
+include 'db.php';
+
+// Redirect guests to login
+if (empty($_SESSION['user_id'])) {
+  header('Location: index.php');
+  exit;
+}
+
+$userId = (int) $_SESSION['user_id'];
+
+// Load user (for role/nav/profile link)
+$userStmt = $connection->prepare('SELECT id, name, role FROM users WHERE id = ? LIMIT 1');
+$userStmt->execute([$userId]);
+$currentUser = $userStmt->fetch();
+if (!$currentUser) {
+  // If session is stale, force logout
+  header('Location: logout.php');
+  exit;
+}
+
+// Load achievements (defaults to zeros if not present)
+$achStmt = $connection->prepare('SELECT sqli, idor, xss, cookie, privesc FROM achievements WHERE user_id = ? LIMIT 1');
+$achStmt->execute([$userId]);
+$achRow = $achStmt->fetch() ?: ['sqli' => 0, 'idor' => 0, 'xss' => 0, 'cookie' => 0, 'privesc' => 0];
+
+$achievements = [
+  'sqli' => (bool) ($achRow['sqli'] ?? 0),
+  'idor' => (bool) ($achRow['idor'] ?? 0),
+  'xss' => (bool) ($achRow['xss'] ?? 0),
+  'cookie' => (bool) ($achRow['cookie'] ?? 0),
+  'privesc' => (bool) ($achRow['privesc'] ?? 0),
+];
+
+$achCount = array_sum($achievements);
+$achTotal = 5;
+$progressPercent = $achTotal > 0 ? round(($achCount / $achTotal) * 100) : 0;
+
+// Basic rank text (frontend i18n will override label text)
+if ($achCount === 0) {
+  $rankText = 'Casual User';
+} elseif ($achCount <= 2) {
+  $rankText = 'Curious Brain';
+} elseif ($achCount <= 4) {
+  $rankText = 'Nearly Hacker';
+} else {
+  $rankText = 'Certified Hacker 😈🔥';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +59,7 @@ session_start();
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
+
 <body>
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
@@ -24,8 +70,10 @@ session_start();
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=<?php echo htmlspecialchars($currentUser['id']); ?>" data-i18n="nav_profile">Profile</a></li>
+          <?php if (($currentUser['role'] ?? '') === 'admin'): ?>
+            <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <?php endif; ?>
           <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
         <div class="ms-3 d-flex gap-1">
@@ -48,12 +96,12 @@ session_start();
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div>
               <div class="fw-semibold" data-i18n="progress_label">Progress</div>
-              <small class="muted" id="achievementProgressText">0/5 achievements</small>
+              <small class="muted" id="achievementProgressText"><?php echo $achCount; ?>/<?php echo $achTotal; ?> achievements</small>
             </div>
-            <span class="chip pill-success" id="rankLabel">Casual User</span>
+            <span class="chip pill-success" id="rankLabel"><?php echo htmlspecialchars($rankText); ?></span>
           </div>
           <div class="progress" role="progressbar" aria-label="Achievement progress">
-            <div class="progress-bar" id="achievementProgressBar" style="width: 0%;"></div>
+            <div class="progress-bar" id="achievementProgressBar" style="width: <?php echo $progressPercent; ?>%;"></div>
           </div>
           <div class="mt-3 d-flex justify-content-between">
             <span class="muted" data-i18n="progress_hint">Unlock each flag to level up</span>
@@ -71,45 +119,45 @@ session_start();
             <small class="muted" data-i18n="achievements_note">UI only — will sync to MySQL later</small>
           </div>
           <div class="d-grid gap-3">
-            <div class="achievement locked" data-achievement="sqli">
+            <div class="achievement <?php echo $achievements['sqli'] ? 'unlocked' : 'locked'; ?>" data-achievement="sqli">
               <div class="status-dot"></div>
               <div>
                 <div class="fw-semibold" data-i18n="ach_sqli_title">SQL Injection (sqli_lab.php)</div>
                 <div class="muted small" data-i18n="ach_sqli_desc">Bypass the login/search query to leak flag</div>
               </div>
-              <span class="ms-auto badge bg-light text-dark" data-status>Locked</span>
+              <span class="ms-auto badge <?php echo $achievements['sqli'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['sqli'] ? 'Unlocked' : 'Locked'; ?></span>
             </div>
-            <div class="achievement locked" data-achievement="idor">
+            <div class="achievement <?php echo $achievements['idor'] ? 'unlocked' : 'locked'; ?>" data-achievement="idor">
               <div class="status-dot"></div>
               <div>
                 <div class="fw-semibold" data-i18n="ach_idor_title">IDOR (idor_lab.php)</div>
                 <div class="muted small" data-i18n="ach_idor_desc">Change the URL id to access hidden profile section</div>
               </div>
-              <span class="ms-auto badge bg-light text-dark" data-status>Locked</span>
+              <span class="ms-auto badge <?php echo $achievements['idor'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['idor'] ? 'Unlocked' : 'Locked'; ?></span>
             </div>
-            <div class="achievement locked" data-achievement="xss">
+            <div class="achievement <?php echo $achievements['xss'] ? 'unlocked' : 'locked'; ?>" data-achievement="xss">
               <div class="status-dot"></div>
               <div>
                 <div class="fw-semibold" data-i18n="ach_xss_title">Stored XSS (update_profile.php)</div>
                 <div class="muted small" data-i18n="ach_xss_desc">Inject script into bio to trigger the flag</div>
               </div>
-              <span class="ms-auto badge bg-light text-dark" data-status>Locked</span>
+              <span class="ms-auto badge <?php echo $achievements['xss'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['xss'] ? 'Unlocked' : 'Locked'; ?></span>
             </div>
-            <div class="achievement locked" data-achievement="cookie">
+            <div class="achievement <?php echo $achievements['cookie'] ? 'unlocked' : 'locked'; ?>" data-achievement="cookie">
               <div class="status-dot"></div>
               <div>
                 <div class="fw-semibold" data-i18n="ach_cookie_title">Cookie Tampering (cookie_lab.php)</div>
                 <div class="muted small" data-i18n="ach_cookie_desc">Edit your cookie to elevate privileges</div>
               </div>
-              <span class="ms-auto badge bg-light text-dark" data-status>Locked</span>
+              <span class="ms-auto badge <?php echo $achievements['cookie'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['cookie'] ? 'Unlocked' : 'Locked'; ?></span>
             </div>
-            <div class="achievement locked" data-achievement="privesc">
+            <div class="achievement <?php echo $achievements['privesc'] ? 'unlocked' : 'locked'; ?>" data-achievement="privesc">
               <div class="status-dot"></div>
               <div>
                 <div class="fw-semibold" data-i18n="ach_privesc_title">Privilege Escalation (privesc_lab.php)</div>
                 <div class="muted small" data-i18n="ach_privesc_desc">Modify the role request to unlock the last flag</div>
               </div>
-              <span class="ms-auto badge bg-light text-dark" data-status>Locked</span>
+              <span class="ms-auto badge <?php echo $achievements['privesc'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['privesc'] ? 'Unlocked' : 'Locked'; ?></span>
             </div>
           </div>
         </div>
@@ -183,6 +231,12 @@ session_start();
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Seed client state from server so the frontend UI matches database progress
+    window.__serverAchievements = <?php echo json_encode($achievements); ?>;
+    localStorage.setItem('ftf_achievements', JSON.stringify(window.__serverAchievements));
+  </script>
   <script src="assets/js/app.js"></script>
 </body>
+
 </html>
