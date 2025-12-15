@@ -1,8 +1,33 @@
 <?php
+// index.php
 session_start();
-// TODO: Implement login logic and session handling
-// TODO: Validate credentials against MySQL
-// TODO: Redirect authenticated users to dashboard
+
+// اتصال بقاعدة البيانات
+$connection = mysqli_connect("localhost", "root", "", "find_the_five");
+
+if(isset($_POST['sign'])){
+
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    
+
+    $sql = "SELECT * FROM users WHERE username='$username' AND password_hash='$password'";
+    $result = mysqli_query($connection, $sql);
+
+    if($result && mysqli_num_rows($result) > 0){
+        $row = mysqli_fetch_assoc($result);
+        
+      
+        
+        // إعادة توجيه بدون تحقق
+        header("Location: profile.php");
+        exit;
+
+    } else {
+        // رسالة خطأ عامة تكشف معلومات
+        echo "<script>alert('Login failed for user: " . addslashes($username) . "');</script>";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

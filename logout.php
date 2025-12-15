@@ -1,8 +1,35 @@
 <?php
-session_start();
 // TODO: Destroy session and redirect to login
 // TODO: Clear authentication cookies
 // TODO: Log logout event
+
+session_start();
+
+// --- تدمير  بيانات الجلسة ---
+$_SESSION = array();
+
+// ---حذف كوكي الجلسة  ---
+if (isset($_COOKIE[session_name()])) {
+    setcookie(session_name(), '', time() - 3600, '/');
+}
+
+// --- تدمير الجلسة على السيرفر ---
+session_destroy();
+
+
+// --- إعادة التوجيه بعد ثانيتين ليعرض الصفحة رسالة قصيرة قبل الرجوع ---
+// header(" ");
+header("Location:index.php");
+
+// الكود الثاني 
+
+// session_start();
+// session_unset();
+// session_destroy();
+// setcookie("seessiionID", "");
+// header("Location:signin.php");
+// exit;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
