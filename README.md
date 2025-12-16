@@ -13,9 +13,9 @@ Project layout
 - `sqli_lab.php` – SQL injection lab
 - `idor_lab.php` – IDOR lab
 - `cookie_lab.php` – cookie tampering lab
-- `privesc_lab.php` – privilege escalation lab
-- `flag_lab.php` – final flag page
-- `admin.php` – Security Supervisor Panel (mock)
+- [-]`privesc_lab.php` – privilege escalation lab
+- [-]`flag_lab.php` – final flag page
+- [-]`admin.php` – Security Supervisor Panel (mock)
 - [x] `logout.php` – logout placeholder
 - [x] `db.php` – future MySQL connection stub
 - [x]`assets/css/style.css` – custom styling
