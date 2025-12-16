@@ -46,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   // Optional remote URL validation.
-  if ($avatarInput !== '' && !filter_var($avatarInput, FILTER_VALIDATE_URL)) {
+  $isLocalUpload = $avatarInput !== '' && preg_match('#^/?assets/uploads/#', $avatarInput);
+  if ($avatarInput !== '' && !filter_var($avatarInput, FILTER_VALIDATE_URL) && !$isLocalUpload) {
     $errors[] = 'Avatar URL must be a valid URL or left blank.';
   }
 

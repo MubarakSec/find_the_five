@@ -99,8 +99,8 @@ $bioText = trim((string) $profileRow['bio']) !== ''
     <div class="row g-4">
       <div class="col-lg-4">
         <div class="card p-4 text-center">
-          <div class="avatar-wrapper mb-3">
-            <img src="<?php echo htmlspecialchars($avatarUrl, ENT_QUOTES); ?>" alt="avatar" class="avatar-circle">
+          <div class="avatar-wrapper mb-3 mx-auto position-relative">
+            <img src="<?php echo htmlspecialchars($avatarUrl, ENT_QUOTES); ?>" alt="avatar" class="avatar-circle rounded-circle" width="150" height="150" loading="lazy">
           </div>
           <h5 class="mb-1"><?php echo htmlspecialchars($displayName, ENT_QUOTES); ?></h5>
           <div class="muted" id="profileIdLabel">Profile ID: <?php echo htmlspecialchars((string) $user['id'], ENT_QUOTES); ?></div>

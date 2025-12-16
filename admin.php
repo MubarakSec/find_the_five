@@ -51,7 +51,6 @@ session_start();
         <h5 class="mb-0" data-i18n="admin_table_title">Users</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-outline-danger btn-sm" type="button" data-i18n="admin_reset_all">Reset all progress</button>
-          <button class="btn btn-outline-secondary btn-sm" type="button" data-i18n="admin_export">Export CSV</button>
         </div>
       </div>
       <div class="table-responsive">

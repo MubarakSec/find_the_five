@@ -7,9 +7,9 @@ Project layout
 --------------
 - [x] `index.php` – login UI (guest)
 - [x] `register.php` – signup UI (guest)
-- `dashboard.php` – achievements overview (user)
-- `profile.php?id=?` – view profile (user)
-- `update_profile.php` – edit bio + stored XSS lab
+- [x] `dashboard.php` – achievements overview (user)
+- [x] `profile.php?id=?` – view profile (user)
+- [x] `update_profile.php` – edit bio + stored XSS lab
 - `sqli_lab.php` – SQL injection lab
 - `idor_lab.php` – IDOR lab
 - `cookie_lab.php` – cookie tampering lab
@@ -17,8 +17,8 @@ Project layout
 - `flag_lab.php` – final flag page
 - `admin.php` – Security Supervisor Panel (mock)
 - [x] `logout.php` – logout placeholder
-- `db.php` – future MySQL connection stub
-- `assets/css/style.css` – custom styling
+- [x] `db.php` – future MySQL connection stub
+- [x]`assets/css/style.css` – custom styling
 - `assets/js/app.js` – frontend helpers for flags/achievements
 
 How to view
