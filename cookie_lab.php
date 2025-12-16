@@ -1,11 +1,19 @@
 <?php
 session_start();
+include 'db.php';
+
+// Redirect guests to login
+if (empty($_SESSION['user_id'])) {
+  header('Location: index.php');
+  exit;
+}
 // TODO: Validate session before showing page
 // TODO: Move authorization out of cookies and into server-side checks
 // TODO: Verify flag submissions against database
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +22,7 @@ session_start();
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
+
 <body>
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
@@ -88,4 +97,5 @@ session_start();
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
+
 </html>
