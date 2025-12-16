@@ -7,9 +7,45 @@ if (empty($_SESSION['user_id'])) {
   header('Location: index.php');
   exit;
 }
-// TODO: Ensure user is authenticated
-// TODO: Fetch profile details by id parameter
-// TODO: Protect against IDOR when loading another profile
+// نحفظ الجلسة كرقم
+$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+//نجهز تحذير اذا يشتي يغير الاي دي
+$warning = null;
+
+// نحذر من IDOR
+$requestedId = isset($_GET['id']) ? (int) $_GET['id'] : $currentUserId;
+if ($requestedId !== $currentUserId) {
+  $warning = 'You can only view your own profile.';
+  $requestedId = $currentUserId;
+}
+//تحميل الواجهة للمستخدم 
+$userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
+$userStmt->bind_param('i', $requestedId);
+$userStmt->execute();
+$userResult = $userStmt->get_result();
+$user = $userResult ? $userResult->fetch_assoc() : null;
+
+if (!$user) {
+  // اذا الجلسة واقفة, اخرج
+  header('Location: logout.php');
+  exit;
+}
+
+//يحمل بيانات المستخدم اذا موجودة
+$profileStmt = $connection->prepare('SELECT bio, avatar_url FROM profiles WHERE user_id = ? LIMIT 1');
+$profileStmt->bind_param('i', $user['id']);
+$profileStmt->execute();
+$profileResult = $profileStmt->get_result();
+$profileRow = ($profileResult ? $profileResult->fetch_assoc() : null) ?? ['bio' => '', 'avatar_url' => ''];
+
+
+$displayName = $user['name'] ?: $user['username'];
+$avatarUrl = !empty($profileRow['avatar_url'])
+  ? $profileRow['avatar_url']
+  : 'https://api.dicebear.com/7.x/identicon/svg?seed=' . urlencode($user['username'] ?? 'user');
+$bioText = trim((string) $profileRow['bio']) !== ''
+  ? $profileRow['bio']
+  : "Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +69,10 @@ if (empty($_SESSION['user_id'])) {
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=<?php echo htmlspecialchars((string) $user['id'], ENT_QUOTES); ?>" data-i18n="nav_profile">Profile</a></li>
+          <?php if (($user['role'] ?? 'user') === 'admin'): ?>
+            <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <?php endif; ?>
           <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
         <div class="ms-3 d-flex gap-1">
@@ -50,20 +88,25 @@ if (empty($_SESSION['user_id'])) {
       <div>
         <div class="pill mb-2" data-i18n="profile_badge"><i class="fa-solid fa-user"></i> Profile viewer</div>
         <h2 class="mb-0" data-i18n="profile_title">Security Trainee Profile</h2>
-        <small class="muted" data-i18n="profile_subtitle">Profile data is static for now — backend to be wired later.</small>
+        <small class="muted"><?php echo htmlspecialchars($user['email'], ENT_QUOTES); ?></small>
       </div>
       <a href="update_profile.php" class="btn btn-primary" data-i18n="profile_edit_btn">Edit profile</a>
     </div>
+    <?php if ($warning): ?>
+      <div class="alert alert-warning small"><?php echo htmlspecialchars($warning, ENT_QUOTES); ?></div>
+    <?php endif; ?>
 
     <div class="row g-4">
       <div class="col-lg-4">
         <div class="card p-4 text-center">
-          <img src="https://api.dicebear.com/7.x/identicon/svg?seed=trainee" alt="avatar" class="rounded-circle mb-3" width="120" height="120">
-          <h5 class="mb-1">Trainee User</h5>
-          <div class="muted" id="profileIdLabel">Profile ID: 1</div>
+          <div class="avatar-wrapper mb-3">
+            <img src="<?php echo htmlspecialchars($avatarUrl, ENT_QUOTES); ?>" alt="avatar" class="avatar-circle">
+          </div>
+          <h5 class="mb-1"><?php echo htmlspecialchars($displayName, ENT_QUOTES); ?></h5>
+          <div class="muted" id="profileIdLabel">Profile ID: <?php echo htmlspecialchars((string) $user['id'], ENT_QUOTES); ?></div>
           <div class="d-flex justify-content-center gap-2 mt-3">
-            <span class="chip">Learner</span>
-            <span class="chip pill-warning">Sandbox</span>
+            <span class="chip"><?php echo htmlspecialchars($user['role'] ?? 'user', ENT_QUOTES); ?></span>
+            <span class="chip pill-warning">You</span>
           </div>
           <a href="flag_lab.php" class="d-block mt-3 small">Finish line</a>
         </div>
@@ -74,8 +117,7 @@ if (empty($_SESSION['user_id'])) {
             <h5 class="mb-0" data-i18n="profile_about_title">About</h5>
             <small class="muted" data-i18n="profile_about_note">Editable in update_profile.php</small>
           </div>
-          <p id="bioText" data-i18n="profile_bio_text">Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.</p>
-          <div class="flag hidden-flag" id="profileFlag" data-flag-key="profile"></div>
+          <p id="bioText"><?php echo nl2br(htmlspecialchars($bioText, ENT_QUOTES, 'UTF-8')); ?></p>
         </div>
         <div class="card p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
