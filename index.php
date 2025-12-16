@@ -2,35 +2,52 @@
 // index.php
 session_start();
 
+if (!empty($_SESSION['user_id'])) {
+  header('Location: dashboard.php');
+  exit;
+}
+
 // اتصال بقاعدة البيانات
-$connection = mysqli_connect("localhost", "root", "", "find_the_five");
+include 'db.php';
 
-if(isset($_POST['sign'])){
+$errors = [];
+$email = '';
 
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $email = $_POST['email'];
+  $password = $_POST['password'];
 
-    $sql = "SELECT * FROM users WHERE username='$username' AND password_hash='$password'";
-    $result = mysqli_query($connection, $sql);
+  if ($email === '' || $password === '') {
+    $errors[] = 'Email and password are required.';
+  } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $errors[] = 'Enter a valid email address.';
+  }
 
-    if($result && mysqli_num_rows($result) > 0){
-        $row = mysqli_fetch_assoc($result);
-        
-      
-        
-        // إعادة توجيه بدون تحقق
-        header("Location: profile.php");
-        exit;
+  $stmt = $connection->prepare('SELECT id, password_hash, role FROM users WHERE email = ? LIMIT 1');
+  $stmt->bind_param('s', $email);
+  $stmt->execute();
+  $result = $stmt->get_result();
+  $user = $result ? $result->fetch_assoc() : null;
 
-    } else {
-        // رسالة خطأ عامة تكشف معلومات
-        echo "<script>alert('Login failed for user: " . addslashes($username) . "');</script>";
-    }
+  if ($user && password_verify($password, $user['password_hash'])) {
+    $_SESSION['user_id'] = (int) $user['id'];
+    $_SESSION['role'] = $user['role'] ?? 'user';
+
+
+
+    // إعادة توجيه بدون تحقق
+    header("Location: profile.php");
+    exit;
+  } else {
+    // رسالة خطأ عامة تكشف معلومات
+    $errors[] = 'Invalid email or password.';
+  }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,6 +56,7 @@ if(isset($_POST['sign'])){
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
+
 <body>
   <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container">
@@ -76,16 +94,23 @@ if(isset($_POST['sign'])){
             <h5 class="mb-0" data-i18n="login_form_title">Login</h5>
             <span class="chip" data-i18n="login_chip">Guest access</span>
           </div>
-          <form>
+          <?php if (!empty($errors)): ?>
+            <div class="alert alert-danger">
+              <?php foreach ($errors as $err): ?>
+                <div><?php echo htmlspecialchars($err, ENT_QUOTES); ?></div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+          <form method="POST" action="index.php" novalidate>
             <div class="mb-3">
               <label class="form-label" data-i18n="field_email">Email</label>
-              <input type="email" class="form-control" placeholder="you@example.com" data-i18n-placeholder="placeholder_email">
+              <input type="email" class="form-control" placeholder="you@example.com" data-i18n-placeholder="placeholder_email" name="email" value="<?php echo htmlspecialchars($email, ENT_QUOTES); ?>" placeholder="you@example.com" data-i18n-placeholder="placeholder_email" required>
             </div>
             <div class="mb-3">
               <label class="form-label" data-i18n="field_password">Password</label>
-              <input type="password" class="form-control" placeholder="••••••••" data-i18n-placeholder="placeholder_password">
+              <input type="password" class="form-control" placeholder="••••••••" data-i18n-placeholder="placeholder_password" name="password">
             </div>
-            <button type="button" class="btn btn-primary w-100" data-i18n="login_button">Login (UI only)</button>
+            <button type="submit" class="btn btn-primary w-100" data-i18n="login_button" name="sign">Login</button>
           </form>
           <div class="text-center mt-3">
             <small class="muted" data-i18n-html="login_switch">No account? <a href="register.php">Register here</a></small>
@@ -104,4 +129,5 @@ if(isset($_POST['sign'])){
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
+
 </html>
