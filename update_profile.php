@@ -7,9 +7,102 @@ if (empty($_SESSION['user_id'])) {
   header('Location: index.php');
   exit;
 }
-// TODO: Authorize user before allowing updates
-// TODO: Sanitize and persist bio changes to MySQL
-// TODO: Prevent stored XSS by escaping output
+// يحفظ الاي دي كرقم
+$userId = (int) $_SESSION['user_id'];
+// يتجهز لأي غلط
+$errors = [];
+// حق رساله انه تم بعد الحفظ
+$success = null;
+
+// يتم التجهيز للمستخدم الحالي اذا كان مابش يرده
+$userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
+$userStmt->bind_param('i', $userId);
+$userStmt->execute();
+$userResult = $userStmt->get_result();
+$user = $userResult ? $userResult->fetch_assoc() : null;
+if (!$user) {
+  header('Location: logout.php');
+  exit;
+}
+// يحمل المستخدم اذا كان جاهز
+$profileStmt = $connection->prepare('SELECT bio, avatar_url FROM profiles WHERE user_id = ? LIMIT 1');
+$profileStmt->bind_param('i', $userId);
+$profileStmt->execute();
+$profileResult = $profileStmt->get_result();
+$profileRow = $profileResult ? $profileResult->fetch_assoc() : null;
+$hasProfile = (bool) $profileRow;
+if (!$profileRow) {
+  $profileRow = ['bio' => '', 'avatar_url' => ''];
+}
+
+//تجهيز لحقل form
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $bioInput = trim($_POST['bio'] ?? '');
+  $avatarInput = trim($_POST['avatar_url'] ?? '');
+  $uploadedPath = $profileRow['avatar_url'] ?? '';
+
+  if (strlen($bioInput) > 2000) {
+    $errors[] = 'Bio must be 2000 characters or less.';
+  }
+
+  // Optional remote URL validation.
+  if ($avatarInput !== '' && !filter_var($avatarInput, FILTER_VALIDATE_URL)) {
+    $errors[] = 'Avatar URL must be a valid URL or left blank.';
+  }
+
+  // Optional file upload for avatar.
+  if (!empty($_FILES['avatar_file']['name'])) {
+    $file = $_FILES['avatar_file'];
+    if ($file['error'] === UPLOAD_ERR_OK) {
+      $finfo = finfo_open(FILEINFO_MIME_TYPE);
+      $mime = finfo_file($finfo, $file['tmp_name']);
+      finfo_close($finfo);
+      $allowedMimes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+      if (!isset($allowedMimes[$mime])) {
+        $errors[] = 'Avatar file must be JPG, PNG, GIF, or WEBP.';
+      } else {
+        $ext = $allowedMimes[$mime];
+        $uploadDir = __DIR__ . '/assets/uploads';
+        if (!is_dir($uploadDir)) {
+          mkdir($uploadDir, 0755, true);
+        }
+        $filename = 'avatar_' . $userId . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $targetPath = $uploadDir . '/' . $filename;
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+          $uploadedPath = 'assets/uploads/' . $filename;
+          $avatarInput = $uploadedPath;
+        } else {
+          $errors[] = 'Could not save uploaded avatar.';
+        }
+      }
+    } elseif ($file['error'] !== UPLOAD_ERR_NO_FILE) {
+      $errors[] = 'Error uploading avatar.';
+    }
+  }
+
+  if (empty($errors)) {
+    if ($hasProfile) {
+      $stmt = $connection->prepare('UPDATE profiles SET bio = ?, avatar_url = ? WHERE user_id = ?');
+      $stmt->bind_param('ssi', $bioInput, $avatarInput, $userId);
+    } else {
+      $stmt = $connection->prepare('INSERT INTO profiles (bio, avatar_url, user_id) VALUES (?, ?, ?)');
+      $stmt->bind_param('ssi', $bioInput, $avatarInput, $userId);
+      $hasProfile = true;
+    }
+    $stmt->execute();
+    $success = 'Profile updated.';
+    $profileRow['bio'] = $bioInput;
+    $profileRow['avatar_url'] = $avatarInput;
+  }
+}
+
+$displayName = $user['name'] ?: $user['username'];
+$avatarUrl = $profileRow['avatar_url'] !== ''
+  ? $profileRow['avatar_url']
+  : 'https://api.dicebear.com/7.x/identicon/svg?seed=' . urlencode($user['username'] ?? 'user');
+$bioText = $profileRow['bio'] !== ''
+  ? $profileRow['bio']
+  : "Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +126,10 @@ if (empty($_SESSION['user_id'])) {
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=<?php echo htmlspecialchars((string) $user['id'], ENT_QUOTES); ?>" data-i18n="nav_profile">Profile</a></li>
+          <?php if (($user['role'] ?? 'user') === 'admin'): ?>
+            <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <?php endif; ?>
           <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
         <div class="ms-3 d-flex gap-1">
@@ -71,13 +166,27 @@ if (empty($_SESSION['user_id'])) {
             <h5 class="mb-0" data-i18n="xss_form_title">Edit bio</h5>
             <span class="chip pill-warning" data-i18n="xss_form_chip">Unsanitized</span>
           </div>
-          <div id="alertPlaceholder"></div>
-          <form id="bioForm">
+          <?php if (!empty($errors)): ?>
+            <div class="alert alert-danger">
+              <?php foreach ($errors as $err): ?>
+                <div><?php echo htmlspecialchars($err, ENT_QUOTES); ?></div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+          <?php if ($success): ?>
+            <div class="alert alert-success"><?php echo htmlspecialchars($success, ENT_QUOTES); ?></div>
+          <?php endif; ?>
+          <form method="POST" action="update_profile.php" enctype="multipart/form-data" novalidate>
             <div class="mb-3">
               <label class="form-label" data-i18n="xss_field_bio">Bio text</label>
-              <textarea id="bioInput" class="form-control" rows="6" placeholder="Write about yourself..." data-i18n-placeholder="xss_placeholder_bio"></textarea>
+              <textarea class="form-control" name="bio" rows="6" placeholder="Write about yourself..." data-i18n-placeholder="xss_placeholder_bio"><?php echo htmlspecialchars($profileRow['bio'] ?? '', ENT_QUOTES); ?></textarea>
             </div>
-            <button class="btn btn-primary w-100" type="submit" data-i18n="xss_save_btn">Save bio (UI only)</button>
+            <input type="hidden" class="form-control" name="avatar_url" value="<?php echo htmlspecialchars($profileRow['avatar_url'] ?? '', ENT_QUOTES); ?>">
+            <div class="mb-3">
+              <label class="form-label">Upload avatar (JPG, PNG, GIF, WEBP)</label>
+              <input type="file" class="form-control" name="avatar_file" accept=".jpg,.jpeg,.png,.gif,.webp,image/*">
+            </div>
+            <button class="btn btn-primary w-100" type="submit" data-i18n="xss_save_btn">Save bio</button>
           </form>
           <div class="mt-3">
             <small class="muted" data-i18n="xss_hint">Psst: Stored XSS means the script will live in the database and run for anyone viewing your profile.</small>
@@ -91,7 +200,7 @@ if (empty($_SESSION['user_id'])) {
             <h5 class="mb-0" data-i18n="xss_preview_title">Live preview</h5>
             <span class="chip" data-i18n="xss_preview_chip">Bio output</span>
           </div>
-          <div class="border rounded p-3" id="bioPreview" data-i18n="xss_preview_empty">Your bio will appear here.</div>
+          <div class="border rounded p-3" id="bioPreview"><?php echo nl2br(htmlspecialchars($bioText, ENT_QUOTES, 'UTF-8')); ?></div>
           <div class="flag hidden-flag" id="xssFlag" data-flag-key="xss"></div>
           <button class="btn btn-outline-primary w-100 mt-3 flag-submit" type="button" data-achievement="xss" data-flag-target="#xssFlag" data-i18n="xss_submit_btn">Submit flag (frontend)</button>
         </div>
