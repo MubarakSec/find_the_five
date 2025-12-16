@@ -1,7 +1,7 @@
 <?php
 session_start();
 include 'db.php';
-
+require_once 'helpers.php';
 // Redirect guests to login
 if (empty($_SESSION['user_id'])) {
   header('Location: index.php');
