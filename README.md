@@ -5,8 +5,8 @@ Frontend-only PHP pages that illustrate five web vulnerabilities. Backend logic 
 
 Project layout
 --------------
-- `index.php` – login UI (guest)
-- `register.php` – signup UI (guest)
+- [x] `index.php` – login UI (guest)
+- [x] `register.php` – signup UI (guest)
 - `dashboard.php` – achievements overview (user)
 - `profile.php?id=?` – view profile (user)
 - `update_profile.php` – edit bio + stored XSS lab
@@ -16,7 +16,7 @@ Project layout
 - `privesc_lab.php` – privilege escalation lab
 - `flag_lab.php` – final flag page
 - `admin.php` – Security Supervisor Panel (mock)
-- `logout.php` – logout placeholder
+- [x] `logout.php` – logout placeholder
 - `db.php` – future MySQL connection stub
 - `assets/css/style.css` – custom styling
 - `assets/js/app.js` – frontend helpers for flags/achievements
