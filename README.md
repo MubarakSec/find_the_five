@@ -14,7 +14,7 @@ Project layout
 - `idor_lab.php` – IDOR lab
 - `cookie_lab.php` – cookie tampering lab
 - [-] `privesc_lab.php` – privilege escalation lab
-- [-] `flag_lab.php` – final flag page
+- [x] `flag_lab.php` – final flag page
 - [-] `admin.php` – Security Supervisor Panel (mock)
 - [x] `logout.php` – logout placeholder
 - [x] `db.php` – future MySQL connection stub

@@ -33,6 +33,12 @@ Tables
     - `sqli`, `idor`, `xss`, `cookie`, `privesc` TINYINT(1) flags (0/1).
     - `completed_at` DATETIME when all five are done (nullable).
     - `updated_at` TIMESTAMP for last change.
+- `flags`
+  - Purpose: store per-lab secrets and final master code/flag server-side.
+  - Key columns:
+    - `lab_key` VARCHAR(50) PK (e.g., `sqli`, `idor`, `cookie`, `privesc`, `final_code`, `final_flag`).
+    - `flag_value` TEXT containing the secret value.
+    - `updated_at` TIMESTAMP for last change.
 
 Relationships
 -------------
