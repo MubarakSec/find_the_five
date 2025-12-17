@@ -44,3 +44,18 @@ CREATE TABLE IF NOT EXISTS achievements (
     REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
   UNIQUE KEY uniq_achievements_user (user_id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS flags (
+  lab_key VARCHAR(50) NOT NULL PRIMARY KEY,
+  flag_value TEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT INTO flags (lab_key, flag_value) VALUES
+  ('sqli', 'FLAG{SQLI_BYPASS_MASTER}'),
+  ('idor', 'FLAG{IDOR_UNLOCKED_PROFILE}'),
+  ('cookie', 'FLAG{COOKIE_TRUST_IS_BAD}'),
+  ('privesc', 'FLAG{ROLE_TAMPERING_SUCCESS}'),
+  ('final_code', 'FTF-MASTER-KEY-204'),
+  ('final_flag', 'FLAG{FIND_THE_FIVE_COMPLETE}')
+ON DUPLICATE KEY UPDATE flag_value = VALUES(flag_value);
