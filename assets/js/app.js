@@ -432,13 +432,18 @@
   };
 
   const showMessage = (text, type = 'success') => {
-    const placeholder = document.getElementById('alertPlaceholder');
-    if (placeholder) {
-      placeholder.innerHTML = `<div class="alert alert-${type} mb-3">${text}</div>`;
-      setTimeout(() => (placeholder.innerHTML = ''), 2800);
-    } else {
-      console.log(text);
+    let placeholder = document.getElementById('alertPlaceholder');
+    if (!placeholder) {
+      placeholder = document.createElement('div');
+      placeholder.id = 'alertPlaceholder';
+      placeholder.className = 'position-fixed top-0 start-50 translate-middle-x p-3';
+      placeholder.style.zIndex = '1080';
+      document.body.appendChild(placeholder);
     }
+    placeholder.innerHTML = `<div class="alert alert-${type} shadow mb-2">${text}</div>`;
+    setTimeout(() => {
+      if (placeholder) placeholder.innerHTML = '';
+    }, 3000);
   };
 
   const rankForCount = (count) => {
@@ -687,6 +692,10 @@
 
     if (form) {
       form.addEventListener('submit', (e) => {
+        const clientOnly = form.dataset.clientOnly === 'true';
+        if (!clientOnly) {
+          return; // allow the server to process the POST so PHP messages show up
+        }
         e.preventDefault();
         const code = (document.getElementById('finalCodeInput').value || '').trim();
         if (code.toUpperCase() === secret.toUpperCase()) {
