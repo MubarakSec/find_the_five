@@ -2,14 +2,43 @@
 session_start();
 include 'db.php';
 require_once 'helpers.php';
-// Redirect guests to login
+
 if (empty($_SESSION['user_id'])) {
   header('Location: index.php');
   exit;
 }
-// TODO: Validate session before showing page
-// TODO: Move authorization out of cookies and into server-side checks
-// TODO: Verify flag submissions against database
+
+$userId = (int) $_SESSION['user_id'];
+$expectedFlag = getFlagValue($connection, 'cookie', 'FLAG{COOKIE_TRUST_IS_BAD}');
+$flagMessage = null;
+$flagType = 'info';
+
+// Load current user for nav.
+$userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
+$userStmt->bind_param('i', $userId);
+$userStmt->execute();
+$userResult = $userStmt->get_result();
+$currentUser = $userResult ? $userResult->fetch_assoc() : null;
+if (!$currentUser) {
+  header('Location: logout.php');
+  exit;
+}
+$navProfileId = (int) $currentUser['id'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $submitted = trim($_POST['flag'] ?? '');
+  if ($submitted === '') {
+    $flagMessage = 'Please enter a flag value.';
+    $flagType = 'danger';
+  } elseif ($submitted !== $expectedFlag) {
+    $flagMessage = 'Flag is incorrect. Check the access_level cookie.';
+    $flagType = 'danger';
+  } else {
+    unlockAchievement($connection, $userId, 'cookie');
+    $flagMessage = 'Cookie flag accepted. Achievement unlocked.';
+    $flagType = 'success';
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +62,10 @@ if (empty($_SESSION['user_id'])) {
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=<?php echo htmlspecialchars((string) $navProfileId, ENT_QUOTES); ?>" data-i18n="nav_profile">Profile</a></li>
+          <?php if (($currentUser['role'] ?? 'user') === 'admin'): ?>
+            <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <?php endif; ?>
           <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
         <div class="ms-3 d-flex gap-1">
@@ -64,9 +95,8 @@ if (empty($_SESSION['user_id'])) {
           </div>
           <div class="mb-3">
             <label class="form-label" data-i18n="cookie_current_label">Current cookies</label>
-            <textarea class="form-control" rows="4" readonly id="cookieBox"></textarea>
+            <textarea class="form-control" rows="4" readonly><?php echo htmlspecialchars(http_build_query($_COOKIE, '', '; ') ?: 'No cookies found.', ENT_QUOTES); ?></textarea>
           </div>
-          <button class="btn btn-outline-primary w-100" id="refreshCookies" type="button" data-i18n="cookie_refresh_btn">Refresh cookie view</button>
           <div class="alert alert-info mt-3">
             <div class="fw-semibold" data-i18n="cookie_goal_title">Goal</div>
             <span data-i18n-html="cookie_goal_text">Set <code>access_level=elite</code> or <code>access_level=admin</code> then refresh. You can use browser devtools to edit cookies.</span>
@@ -81,8 +111,14 @@ if (empty($_SESSION['user_id'])) {
             <span class="chip" data-i18n="cookie_flag_chip">Hidden</span>
           </div>
           <p class="muted small mb-2" data-i18n="cookie_flag_desc">When the cookie indicates admin access, the restricted flag appears.</p>
-          <div class="flag hidden-flag" id="cookieFlag" data-flag-key="cookie"></div>
-          <button class="btn btn-outline-primary w-100 mt-3 flag-submit" type="button" data-achievement="cookie" data-flag-target="#cookieFlag" data-i18n="cookie_submit_btn">Submit flag (frontend)</button>
+          <?php if ($flagMessage): ?>
+            <div class="alert alert-<?php echo htmlspecialchars($flagType, ENT_QUOTES); ?> mt-3"><?php echo htmlspecialchars($flagMessage, ENT_QUOTES); ?></div>
+          <?php endif; ?>
+          <form class="mt-3" method="POST" action="cookie_lab.php" novalidate>
+            <label class="form-label">Submit flag (server)</label>
+            <input type="text" name="flag" class="form-control" placeholder="FLAG{...}" required>
+            <button class="btn btn-outline-primary w-100 mt-2" type="submit" data-i18n="cookie_submit_btn">Submit flag</button>
+          </form>
         </div>
       </div>
     </div>
