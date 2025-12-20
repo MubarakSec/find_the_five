@@ -35,22 +35,6 @@ if (!$currentUser) {
 $navProfileId = (int) $currentUser['id'];
 $achievements = getUserAchievements($connection, $userId);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $submitted = trim($_POST['flag'] ?? '');
-  if ($submitted === '') {
-    $flagMessage = tr('Please enter a flag value.', 'الرجاء إدخال قيمة العلم.', $lang);
-    $flagType = 'danger';
-  } elseif ($submitted !== $expectedFlag) {
-    $flagMessage = tr('Flag is incorrect. Check the access_level cookie.', 'العلم غير صحيح، تحقق من كوكي access_level.', $lang);
-    $flagType = 'danger';
-  } else {
-    unlockAchievement($connection, $userId, 'cookie');
-    $flagMessage = tr('Cookie flag accepted. Achievement unlocked.', 'تم قبول العلم وفتح الإنجاز.', $lang);
-    $flagType = 'success';
-    $cookieFlag = $expectedFlag;
-  }
-}
-
 if ($hasAdminCookie) {
   $cookieFlag = $expectedFlag;
   unlockAchievement($connection, $userId, 'cookie');
@@ -150,11 +134,6 @@ if ($hasAdminCookie) {
           <?php if ($flagMessage): ?>
             <div class="alert alert-<?php echo htmlspecialchars($flagType, ENT_QUOTES); ?> mt-3"><?php echo htmlspecialchars($flagMessage, ENT_QUOTES); ?></div>
           <?php endif; ?>
-          <form class="mt-3" method="POST" action="cookie_lab.php" novalidate>
-            <label class="form-label">Submit flag (server)</label>
-            <input type="text" name="flag" class="form-control" placeholder="FLAG{...}" required>
-            <button class="btn btn-outline-primary w-100 mt-2" type="submit" data-i18n="cookie_submit_btn">Submit flag</button>
-          </form>
         </div>
       </div>
     </div>
