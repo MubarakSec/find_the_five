@@ -31,8 +31,18 @@ Tables
     - `id` INT UNSIGNED PK.
     - `user_id` INT UNSIGNED FK → `users.id` (1:1), ON DELETE CASCADE.
     - `sqli`, `idor`, `xss`, `cookie`, `privesc` TINYINT(1) flags (0/1).
-    - `completed_at` DATETIME when all five are done (nullable).
+    - `final` TINYINT(1) for final completion/flag unlock.
+    - `completed_at` DATETIME when final completion is recorded (nullable).
     - `updated_at` TIMESTAMP for last change.
+- `audit_logs`
+  - Purpose: lightweight audit trail for lab events.
+  - Key columns:
+    - `id` INT UNSIGNED PK.
+    - `user_id` INT UNSIGNED FK → `users.id` (many:1), ON DELETE CASCADE.
+    - `event_type` VARCHAR(80) (e.g., `achievement_unlock`, `final_unlock`).
+    - `event_context` VARCHAR(160) (e.g., `sqli`, `master_code`).
+    - `ip_address` VARCHAR(45), `user_agent` VARCHAR(255).
+    - `created_at` TIMESTAMP for event time.
 - `flags`
   - Purpose: store per-lab secrets and final master code/flag server-side.
   - Key columns:
@@ -44,6 +54,7 @@ Relationships
 -------------
 - `users` 1:1 `profiles` (unique `user_id`).
 - `users` 1:1 `achievements` (unique `user_id`).
+- `users` 1:many `audit_logs` (foreign key `user_id`).
 
 Usage notes (future backend)
 ----------------------------

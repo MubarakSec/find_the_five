@@ -2,14 +2,58 @@
 session_start();
 include 'db.php';
 require_once 'helpers.php';
-// Redirect guests to login
 if (empty($_SESSION['user_id'])) {
   header('Location: index.php');
   exit;
 }
-// TODO: Authorize access to profiles by ownership
-// TODO: Enforce access control on the backend
-// TODO: Fetch profile data by id securely
+
+$userId = (int) $_SESSION['user_id'];
+$userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
+$userStmt->bind_param('i', $userId);
+$userStmt->execute();
+$userResult = $userStmt->get_result();
+$currentUser = $userResult ? $userResult->fetch_assoc() : null;
+if (!$currentUser) {
+  header('Location: logout.php');
+  exit;
+}
+$navProfileId = (int) $currentUser['id'];
+$achievements = getUserAchievements($connection, $userId);
+$lang = currentLang();
+$lang = currentLang();
+
+$requestedId = trim($_GET['id'] ?? (string) $navProfileId);
+$idorRecord = null;
+$idorFlag = null;
+$idorNotice = null;
+
+if ($requestedId !== '') {
+  if (ctype_digit($requestedId)) {
+    $stmt = $connection->prepare('SELECT u.id, u.name, u.username, u.email, u.role, p.bio FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = ? LIMIT 1');
+    $idInt = (int) $requestedId;
+    $stmt->bind_param('i', $idInt);
+  } else {
+    $stmt = $connection->prepare('SELECT u.id, u.name, u.username, u.email, u.role, p.bio FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.username = ? LIMIT 1');
+    $stmt->bind_param('s', $requestedId);
+  }
+  if ($stmt) {
+    $stmt->execute();
+    $recordResult = $stmt->get_result();
+    $idorRecord = $recordResult ? $recordResult->fetch_assoc() : null;
+  }
+}
+
+if ($idorRecord) {
+  if ((int) ($idorRecord['id'] ?? 0) !== $navProfileId) {
+    $idorFlag = getFlagValue($connection, 'idor', 'FLAG{IDOR_UNLOCKED_PROFILE}');
+    unlockAchievement($connection, $navProfileId, 'idor');
+    $idorNotice = tr("You viewed another user's data without authorization.", 'قرأت بيانات مستخدم آخر بدون صلاحية.', $lang);
+  } else {
+    $idorNotice = tr('This is your own profile. Change the id query to target another user.', 'هذا ملفك أنت. غيّر قيمة id لاستهداف مستخدم آخر.', $lang);
+  }
+} else {
+  $idorNotice = tr('No profile found for that id.', 'لا يوجد ملف بهذا المعرّف.', $lang);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +77,10 @@ if (empty($_SESSION['user_id'])) {
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=<?php echo htmlspecialchars((string) $navProfileId, ENT_QUOTES); ?>" data-i18n="nav_profile">Profile</a></li>
+          <?php if (($currentUser['role'] ?? 'user') === 'admin'): ?>
+            <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <?php endif; ?>
           <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
         <div class="ms-3 d-flex gap-1">
@@ -62,14 +108,35 @@ if (empty($_SESSION['user_id'])) {
             <h5 class="mb-0" data-i18n="idor_form_title">Profile payload</h5>
             <small class="muted" data-i18n="idor_form_subtitle">Query string driven</small>
           </div>
-          <div class="alert alert-info">
-            <span data-i18n-html="idor_alert">Try <code>?id=2</code> or <code>?id=admin</code> to fetch another user's record. In a real app this would be blocked server-side.</span>
+          <button class="btn btn-outline-primary btn-sm w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#idorHint" aria-expanded="false" aria-controls="idorHint" data-i18n="hint_toggle">Show hint</button>
+          <div class="collapse" id="idorHint">
+            <div class="alert alert-info mb-0">
+              <span data-i18n-html="idor_alert">Try changing the <code>id</code> value in the URL to a different user. In a real app this would be blocked server-side.</span>
+            </div>
+          </div>
+          <button class="btn btn-outline-primary btn-sm w-100 mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#idorAnswer" aria-expanded="false" aria-controls="idorAnswer" data-i18n="answer_toggle">Show answer</button>
+          <div class="collapse mt-3" id="idorAnswer">
+            <div class="alert alert-info mb-0">
+              <div class="fw-semibold" data-i18n="answer_title">Answer</div>
+              <div class="small" data-i18n-html="idor_answer">Change the URL to another id (for example <code>?id=2</code>), reload, and the flag will appear in the unauthorized data panel.</div>
+            </div>
           </div>
           <div class="d-flex align-items-center gap-2 mb-2">
             <span class="muted" data-i18n="idor_current">Current id:</span>
-            <span class="badge bg-primary" id="idorCurrentId">1</span>
+            <span class="badge bg-primary" id="idorCurrentId"><?php echo htmlspecialchars($requestedId, ENT_QUOTES); ?></span>
           </div>
-          <div class="border rounded p-3 bg-light" id="idorRecord" data-i18n="idor_loading">Loading profile...</div>
+          <div class="border rounded p-3 bg-light" id="idorRecordServer">
+            <?php if ($idorRecord): ?>
+              <div class="fw-semibold"><?php echo htmlspecialchars($idorRecord['name'] ?: $idorRecord['username'], ENT_QUOTES); ?> (id: <?php echo htmlspecialchars((string) $idorRecord['id'], ENT_QUOTES); ?>)</div>
+              <div class="muted small">Email: <?php echo htmlspecialchars($idorRecord['email'] ?? tr('unknown', 'غير معروف', $lang), ENT_QUOTES); ?> — Role: <?php echo htmlspecialchars($idorRecord['role'] ?? 'user', ENT_QUOTES); ?></div>
+              <div class="mt-2 small">Bio: <?php echo nl2br(htmlspecialchars($idorRecord['bio'] ?? tr('No bio saved.', 'لا توجد نبذة.', $lang), ENT_QUOTES)); ?></div>
+            <?php else: ?>
+              <div class="text-danger fw-semibold"><?php echo htmlspecialchars(tr('No records yet.', 'لا توجد سجلات.', $lang), ENT_QUOTES); ?></div>
+            <?php endif; ?>
+          </div>
+          <?php if ($idorNotice): ?>
+            <div class="alert alert-info mt-2"><?php echo htmlspecialchars($idorNotice, ENT_QUOTES); ?></div>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -80,8 +147,11 @@ if (empty($_SESSION['user_id'])) {
             <span class="chip" data-i18n="idor_flag_chip">Sensitive</span>
           </div>
           <p class="muted small mb-2" data-i18n="idor_flag_desc">If you can read another user's profile or progress without permission, you've exploited the IDOR.</p>
-          <div class="flag hidden-flag" id="idorFlag" data-flag-key="idor"></div>
-          <button class="btn btn-outline-primary w-100 mt-3 flag-submit" type="button" data-achievement="idor" data-flag-target="#idorFlag" data-i18n="idor_submit_btn">Submit flag (frontend)</button>
+          <?php if ($idorFlag): ?>
+            <div class="flag" id="idorFlag"><?php echo htmlspecialchars($idorFlag, ENT_QUOTES); ?></div>
+          <?php else: ?>
+            <div class="flag hidden-flag" id="idorFlag"></div>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -93,6 +163,10 @@ if (empty($_SESSION['user_id'])) {
     </div>
   </footer>
 
+  <script>
+    window.__serverAchievements = <?php echo json_encode($achievements); ?>;
+    localStorage.setItem('ftf_achievements', JSON.stringify(window.__serverAchievements));
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

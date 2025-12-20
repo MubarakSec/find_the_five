@@ -14,7 +14,9 @@
 - `profiles`: ملف شخصي لكل مستخدم (واحد مقابل واحد).
   - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), `bio`, `avatar_url`, وتواريخ الإنشاء/التحديث.
 - `achievements`: حالة إنجاز كل لاب لكل مستخدم (واحد مقابل واحد).
-  - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), أعلام 0/1 لـ `sqli`, `idor`, `xss`, `cookie`, `privesc`, مع تواريخ الإنشاء/التحديث.
+  - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), أعلام 0/1 لـ `sqli`, `idor`, `xss`, `cookie`, `privesc`, وحقل `final` لتسجيل اكتمال النهائي، مع `completed_at` وتواريخ الإنشاء/التحديث.
+- `audit_logs`: سجل خفيف للأحداث (Audit).
+  - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), `event_type` (مثل `achievement_unlock`), `event_context` (مثل `sqli`)، وعناوين IP/المتصفح، وتاريخ الحدث.
 - `flags`: قيم الفلاج لكل لاب + الكود/الفلاج النهائي.
   - أهم الأعمدة: `lab_key` (مثل `sqli`, `idor`, `cookie`, `privesc`, `final_code`, `final_flag`), القيمة في `flag_value`, وتاريخ التحديث.
 
@@ -22,6 +24,7 @@
 --------
 - كل صف في `profiles` مرتبط بصف واحد في `users` عبر `user_id`.
 - كل صف في `achievements` مرتبط بصف واحد في `users` عبر `user_id`.
+- يمكن أن يمتلك المستخدم عدة سجلات في `audit_logs` عبر `user_id`.
 
 نصائح سريعة
 -----------

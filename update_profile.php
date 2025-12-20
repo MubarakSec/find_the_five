@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db.php';
+require_once 'helpers.php';
 
 // Redirect guests to login
 if (empty($_SESSION['user_id'])) {
@@ -13,6 +14,8 @@ $userId = (int) $_SESSION['user_id'];
 $errors = [];
 // حق رساله انه تم بعد الحفظ
 $success = null;
+$xssFlag = null;
+$lang = currentLang();
 
 // يتم التجهيز للمستخدم الحالي اذا كان مابش يرده
 $userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
@@ -24,6 +27,8 @@ if (!$user) {
   header('Location: logout.php');
   exit;
 }
+
+$achievements = getUserAchievements($connection, (int) $user['id']);
 // يحمل المستخدم اذا كان جاهز
 $profileStmt = $connection->prepare('SELECT bio, avatar_url FROM profiles WHERE user_id = ? LIMIT 1');
 $profileStmt->bind_param('i', $userId);
@@ -42,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $uploadedPath = $profileRow['avatar_url'] ?? '';
 
   if (strlen($bioInput) > 2000) {
-    $errors[] = 'Bio must be 2000 characters or less.';
+    $errors[] = tr('Bio must be 2000 characters or less.', 'يجب ألا تتجاوز النبذة 2000 حرف.', $lang);
   }
 
   // Optional remote URL validation.
@@ -73,11 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $uploadedPath = 'assets/uploads/' . $filename;
           $avatarInput = $uploadedPath;
         } else {
-          $errors[] = 'Could not save uploaded avatar.';
+          $errors[] = tr('Could not save uploaded avatar.', 'تعذر حفظ الصورة.', $lang);
         }
       }
     } elseif ($file['error'] !== UPLOAD_ERR_NO_FILE) {
-      $errors[] = 'Error uploading avatar.';
+      $errors[] = tr('Error uploading avatar.', 'حدث خطأ أثناء رفع الصورة.', $lang);
     }
   }
 
@@ -91,19 +96,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $hasProfile = true;
     }
     $stmt->execute();
-    $success = 'Profile updated.';
+    $success = tr('Profile updated.', 'تم تحديث الملف.', $lang);
     $profileRow['bio'] = $bioInput;
     $profileRow['avatar_url'] = $avatarInput;
+    if (stripos($bioInput, '<script') !== false) {
+      $xssFlag = getFlagValue($connection, 'xss', 'FLAG{STORED_XSS_OWNED}');
+      unlockAchievement($connection, $userId, 'xss');
+      $success = tr('Stored XSS payload detected. Flag unlocked.', 'تم اكتشاف حمولة XSS مخزّنة، فُتح العلم.', $lang);
+    }
   }
 }
 
-$displayName = $user['name'] ?: $user['username'];
-$avatarUrl = $profileRow['avatar_url'] !== ''
-  ? $profileRow['avatar_url']
-  : 'https://api.dicebear.com/7.x/identicon/svg?seed=' . urlencode($user['username'] ?? 'user');
-$bioText = $profileRow['bio'] !== ''
-  ? $profileRow['bio']
-  : "Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.";
+$bioValue = (string) ($profileRow['bio'] ?? '');
+if (!$xssFlag && stripos($bioValue, '<script') !== false) {
+  $xssFlag = getFlagValue($connection, 'xss', 'FLAG{STORED_XSS_OWNED}');
+  unlockAchievement($connection, $userId, 'xss');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -146,22 +154,22 @@ $bioText = $profileRow['bio'] !== ''
       <div class="col-lg-7">
         <div class="pill mb-2" data-i18n="xss_badge"><i class="fa-solid fa-code"></i> Stored XSS lab</div>
         <h2 class="mb-1" data-i18n="xss_title">Update your bio (and break it)</h2>
-        <p class="muted mb-0" data-i18n="xss_subtitle">The preview below renders unescaped HTML. Insert a &lt;script&gt; tag to simulate a stored cross-site scripting payload and expose the flag.</p>
+        <p class="muted mb-0" data-i18n="xss_subtitle">Your bio is stored and rendered without sanitization. Insert a &lt;script&gt; tag to simulate stored XSS and unlock the flag.</p>
       </div>
       <div class="col-lg-5 mt-3 mt-lg-0">
         <div class="soft-card p-3">
           <div class="fw-semibold mb-1" data-i18n="xss_target_title">Target</div>
           <ul class="lab-steps">
             <li data-i18n="xss_step1">Write a script tag inside your bio</li>
-            <li data-i18n="xss_step2">Save and reload the preview</li>
-            <li data-i18n="xss_step3">The script executes and reveals the flag</li>
+            <li data-i18n="xss_step2">Save the bio</li>
+            <li data-i18n="xss_step3">The flag appears after saving</li>
           </ul>
         </div>
       </div>
     </div>
 
     <div class="row g-4">
-      <div class="col-lg-6">
+      <div class="col-lg-8 mx-auto">
         <div class="card p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0" data-i18n="xss_form_title">Edit bio</h5>
@@ -189,21 +197,22 @@ $bioText = $profileRow['bio'] !== ''
             </div>
             <button class="btn btn-primary w-100" type="submit" data-i18n="xss_save_btn">Save bio</button>
           </form>
-          <div class="mt-3">
+          <button class="btn btn-outline-primary btn-sm w-100 mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#xssHint" aria-expanded="false" aria-controls="xssHint" data-i18n="hint_toggle">Show hint</button>
+          <div class="collapse mt-3" id="xssHint">
             <small class="muted" data-i18n="xss_hint">Psst: Stored XSS means the script will live in the database and run for anyone viewing your profile.</small>
           </div>
-        </div>
-      </div>
-
-      <div class="col-lg-6">
-        <div class="card p-4 floating-flag">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0" data-i18n="xss_preview_title">Live preview</h5>
-            <span class="chip" data-i18n="xss_preview_chip">Bio output</span>
+          <button class="btn btn-outline-primary btn-sm w-100 mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#xssAnswer" aria-expanded="false" aria-controls="xssAnswer" data-i18n="answer_toggle">Show answer</button>
+          <div class="collapse mt-3" id="xssAnswer">
+            <div class="alert alert-info mb-0">
+              <div class="fw-semibold" data-i18n="answer_title">Answer</div>
+              <div class="small" data-i18n-html="xss_answer">Paste <code>&lt;script&gt;alert(1)&lt;/script&gt;</code> into the bio, save, and the flag will unlock.</div>
+            </div>
           </div>
-          <div class="border rounded p-3" id="bioPreview"><?php echo nl2br(htmlspecialchars($bioText, ENT_QUOTES, 'UTF-8')); ?></div>
-          <div class="flag hidden-flag" id="xssFlag" data-flag-key="xss"></div>
-          <button class="btn btn-outline-primary w-100 mt-3 flag-submit" type="button" data-achievement="xss" data-flag-target="#xssFlag" data-i18n="xss_submit_btn">Submit flag (frontend)</button>
+          <?php if ($xssFlag): ?>
+            <div class="flag mt-3" id="xssFlag"><?php echo htmlspecialchars($xssFlag, ENT_QUOTES); ?></div>
+          <?php else: ?>
+            <div class="flag hidden-flag mt-3" id="xssFlag"></div>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -215,6 +224,10 @@ $bioText = $profileRow['bio'] !== ''
     </div>
   </footer>
 
+  <script>
+    window.__serverAchievements = <?php echo json_encode($achievements); ?>;
+    localStorage.setItem('ftf_achievements', JSON.stringify(window.__serverAchievements));
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

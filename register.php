@@ -89,11 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="col-lg-5">
         <div class="pill mb-3" data-i18n="register_badge"><i class="fa-solid fa-user-plus"></i> Create your lab account</div>
         <h1 class="mb-3" data-i18n="register_title">Join the security challenge</h1>
-        <p class="muted" data-i18n="register_subtitle">Progress, achievements, and leaderboard are simulated locally. Backend will be implemented later by students.</p>
+        <p class="muted" data-i18n="register_subtitle">Sign up and store your account securely in the database.</p>
         <ul class="lab-steps mt-3">
           <li data-i18n-html="register_tip1">Complete 5 labs to earn <span class="mini-flag">Certified Hacker</span></li>
           <li data-i18n="register_tip2">Use only your browser — no external interceptors</li>
-          <li data-i18n="register_tip3">All data is placeholder; feel free to experiment</li>
         </ul>
       </div>
       <div class="col-lg-7 mt-4 mt-lg-0">

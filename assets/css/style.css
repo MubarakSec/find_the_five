@@ -272,19 +272,6 @@ a {
   border-color: var(--accent);
 }
 
-.floating-flag {
-  position: relative;
-}
-
-.floating-flag::after {
-  content: 'Hidden flag nearby';
-  position: absolute;
-  top: -12px;
-  right: 12px;
-  font-size: 11px;
-  color: var(--muted);
-}
-
 @media (max-width: 768px) {
   .hero-card {
     padding: 20px;

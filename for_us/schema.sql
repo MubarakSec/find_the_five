@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(60) NOT NULL,
   email VARCHAR(120) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
+  role ENUM('user', 'admin', 'analyst', 'viewer') NOT NULL DEFAULT 'user',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_username (username),
@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS achievements (
   xss TINYINT(1) NOT NULL DEFAULT 0,
   cookie TINYINT(1) NOT NULL DEFAULT 0,
   privesc TINYINT(1) NOT NULL DEFAULT 0,
+  final TINYINT(1) NOT NULL DEFAULT 0,
   completed_at DATETIME DEFAULT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_achievements_user FOREIGN KEY (user_id)
@@ -45,17 +46,21 @@ CREATE TABLE IF NOT EXISTS achievements (
   UNIQUE KEY uniq_achievements_user (user_id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  event_type VARCHAR(80) NOT NULL,
+  event_context VARCHAR(160) DEFAULT NULL,
+  ip_address VARCHAR(45) DEFAULT NULL,
+  user_agent VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id)
+    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  KEY idx_audit_logs_user_created (user_id, created_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS flags (
   lab_key VARCHAR(50) NOT NULL PRIMARY KEY,
   flag_value TEXT NOT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
-
-INSERT INTO flags (lab_key, flag_value) VALUES
-  ('sqli', 'FLAG{SQLI_BYPASS_MASTER}'),
-  ('idor', 'FLAG{IDOR_UNLOCKED_PROFILE}'),
-  ('cookie', 'FLAG{COOKIE_TRUST_IS_BAD}'),
-  ('privesc', 'FLAG{ROLE_TAMPERING_SUCCESS}'),
-  ('final_code', 'FTF-MASTER-KEY-204'),
-  ('final_flag', 'FLAG{FIND_THE_FIVE_COMPLETE}')
-ON DUPLICATE KEY UPDATE flag_value = VALUES(flag_value);

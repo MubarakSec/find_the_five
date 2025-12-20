@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db.php';
+require_once 'helpers.php';
 
 // Redirect guests to login
 if (empty($_SESSION['user_id'])) {
@@ -11,11 +12,12 @@ if (empty($_SESSION['user_id'])) {
 $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
 //نجهز تحذير اذا يشتي يغير الاي دي
 $warning = null;
+$lang = currentLang();
 
 // نحذر من IDOR
 $requestedId = isset($_GET['id']) ? (int) $_GET['id'] : $currentUserId;
 if ($requestedId !== $currentUserId) {
-  $warning = 'You can only view your own profile.';
+  $warning = tr('You can only view your own profile.', 'يمكنك فقط رؤية ملفك.', $lang);
   $requestedId = $currentUserId;
 }
 //تحميل الواجهة للمستخدم 
@@ -30,6 +32,8 @@ if (!$user) {
   header('Location: logout.php');
   exit;
 }
+
+$achievements = getUserAchievements($connection, (int) $user['id']);
 
 //يحمل بيانات المستخدم اذا موجودة
 $profileStmt = $connection->prepare('SELECT bio, avatar_url FROM profiles WHERE user_id = ? LIMIT 1');
@@ -46,6 +50,7 @@ $avatarUrl = !empty($profileRow['avatar_url'])
 $bioText = trim((string) $profileRow['bio']) !== ''
   ? $profileRow['bio']
   : "Hi! I'm exploring web security. This bio is editable and intentionally unfiltered in the XSS lab.";
+$bioContainsScript = stripos($bioText, '<script') !== false;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -89,6 +94,7 @@ $bioText = trim((string) $profileRow['bio']) !== ''
         <div class="pill mb-2" data-i18n="profile_badge"><i class="fa-solid fa-user"></i> Profile viewer</div>
         <h2 class="mb-0" data-i18n="profile_title">Security Trainee Profile</h2>
         <small class="muted"><?php echo htmlspecialchars($user['email'], ENT_QUOTES); ?></small>
+        <div class="small text-muted" data-i18n="profile_access_note">Real profile access is restricted to you. The IDOR lab is separate and intentionally vulnerable.</div>
       </div>
       <a href="update_profile.php" class="btn btn-primary" data-i18n="profile_edit_btn">Edit profile</a>
     </div>
@@ -108,7 +114,6 @@ $bioText = trim((string) $profileRow['bio']) !== ''
             <span class="chip"><?php echo htmlspecialchars($user['role'] ?? 'user', ENT_QUOTES); ?></span>
             <span class="chip pill-warning">You</span>
           </div>
-          <a href="flag_lab.php" class="d-block mt-3 small">Finish line</a>
         </div>
       </div>
       <div class="col-lg-8">
@@ -117,30 +122,18 @@ $bioText = trim((string) $profileRow['bio']) !== ''
             <h5 class="mb-0" data-i18n="profile_about_title">About</h5>
             <small class="muted" data-i18n="profile_about_note">Editable in update_profile.php</small>
           </div>
-          <p id="bioText"><?php echo nl2br(htmlspecialchars($bioText, ENT_QUOTES, 'UTF-8')); ?></p>
-        </div>
-        <div class="card p-4">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0" data-i18n="profile_recent_title">Recent labs</h5>
-            <a class="small" href="dashboard.php" data-i18n="profile_view_all">View all</a>
-          </div>
-          <div class="d-grid gap-3">
-            <div class="soft-card p-3 d-flex align-items-center">
-              <i class="fa-solid fa-database text-primary me-3"></i>
-              <div>
-                <div class="fw-semibold" data-i18n="profile_recent_sqli">SQL Injection lab</div>
-                <small class="muted" data-i18n-html="profile_recent_sqli_hint">Try `' OR '1'='1`</small>
-              </div>
-              <span class="ms-auto badge bg-light text-dark" data-achievement="sqli" data-status>Locked</span>
+          <div class="border rounded p-3">
+            <div id="bioText">
+              <?php if ($bioText !== ''): ?>
+                <?php echo $bioText; ?>
+              <?php else: ?>
+                <span class="muted" data-i18n="profile_bio_empty">No bio yet. Edit your profile to add one.</span>
+              <?php endif; ?>
             </div>
-            <div class="soft-card p-3 d-flex align-items-center">
-              <i class="fa-solid fa-code text-primary me-3"></i>
-              <div>
-                <div class="fw-semibold" data-i18n="profile_recent_xss">Stored XSS lab</div>
-                <small class="muted" data-i18n="profile_recent_xss_hint">Update your bio unsafely</small>
-              </div>
-              <span class="ms-auto badge bg-light text-dark" data-achievement="xss" data-status>Locked</span>
-            </div>
+            <?php if ($bioContainsScript): ?>
+              <div class="alert alert-warning small mt-2" data-i18n="profile_bio_script_warning">Bio contains a script tag and will execute on view.</div>
+              <pre class="small bg-light p-2 mt-1 mb-0"><?php echo htmlspecialchars($bioText, ENT_QUOTES); ?></pre>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -153,6 +146,10 @@ $bioText = trim((string) $profileRow['bio']) !== ''
     </div>
   </footer>
 
+  <script>
+    window.__serverAchievements = <?php echo json_encode($achievements); ?>;
+    localStorage.setItem('ftf_achievements', JSON.stringify(window.__serverAchievements));
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

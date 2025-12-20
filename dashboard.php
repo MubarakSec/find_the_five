@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'db.php';
+require_once 'helpers.php';
 
 // Redirect guests to login
 if (empty($_SESSION['user_id'])) {
@@ -23,23 +24,17 @@ if (!$currentUser) {
 }
 
 // Load achievements (defaults to zeros if not present)
-$achStmt = $connection->prepare('SELECT sqli, idor, xss, cookie, privesc FROM achievements WHERE user_id = ? LIMIT 1');
-$achStmt->bind_param('i', $userId);
-$achStmt->execute();
-$achResult = $achStmt->get_result();
-$achRow = ($achResult ? $achResult->fetch_assoc() : null) ?: ['sqli' => 0, 'idor' => 0, 'xss' => 0, 'cookie' => 0, 'privesc' => 0];
-
-$achievements = [
-  'sqli' => (bool) ($achRow['sqli'] ?? 0),
-  'idor' => (bool) ($achRow['idor'] ?? 0),
-  'xss' => (bool) ($achRow['xss'] ?? 0),
-  'cookie' => (bool) ($achRow['cookie'] ?? 0),
-  'privesc' => (bool) ($achRow['privesc'] ?? 0),
-];
-
-$achCount = array_sum($achievements);
+$achievements = getUserAchievements($connection, $userId);
+$labKeys = ['sqli', 'idor', 'xss', 'cookie', 'privesc'];
+$achCount = 0;
+foreach ($labKeys as $k) {
+  $achCount += !empty($achievements[$k]) ? 1 : 0;
+}
 $achTotal = 5;
 $progressPercent = $achTotal > 0 ? round(($achCount / $achTotal) * 100) : 0;
+$finalUnlocked = !empty($achievements['final']);
+$finalFlag = $finalUnlocked ? getFlagValue($connection, 'final', 'FLAG{FIND_THE_FIVE_COMPLETE}') : null;
+$lang = currentLang();
 
 // Basic rank text (frontend i18n will override label text)
 if ($achCount === 0) {
@@ -93,7 +88,7 @@ if ($achCount === 0) {
       <div class="col-lg-7">
         <div class="pill mb-3" data-i18n="dash_badge"><i class="fa-solid fa-location-crosshairs"></i> Track your lab achievements</div>
         <h1 class="mb-2" data-i18n="dash_title">Find all five vulnerabilities</h1>
-        <p class="muted mb-0" data-i18n="dash_subtitle">Each lab is intentionally misconfigured. Exploit the weakness to reveal its flag, submit it, and watch your rank improve. All progress is simulated on the frontend for now.</p>
+        <p class="muted mb-0" data-i18n="dash_subtitle">Each lab is intentionally misconfigured. Exploit the weakness, submit flags, and watch your rank improve. Progress now saves to MySQL.</p>
       </div>
       <div class="col-lg-5 mt-4 mt-lg-0">
         <div class="soft-card p-4">
@@ -120,48 +115,48 @@ if ($achCount === 0) {
         <div class="card p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0" data-i18n="achievements_title">Achievements</h5>
-            <small class="muted" data-i18n="achievements_note">UI only — will sync to MySQL later</small>
+            <small class="muted" data-i18n="achievements_note">Progress now backed by MySQL</small>
           </div>
           <div class="d-grid gap-3">
             <div class="achievement <?php echo $achievements['sqli'] ? 'unlocked' : 'locked'; ?>" data-achievement="sqli">
               <div class="status-dot"></div>
               <div>
-                <div class="fw-semibold" data-i18n="ach_sqli_title">SQL Injection (sqli_lab.php)</div>
+                <div class="fw-semibold" data-i18n="ach_sqli_title">SQL Injection</div>
                 <div class="muted small" data-i18n="ach_sqli_desc">Bypass the login/search query to leak flag</div>
               </div>
-              <span class="ms-auto badge <?php echo $achievements['sqli'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['sqli'] ? 'Unlocked' : 'Locked'; ?></span>
+              <span class="ms-auto badge <?php echo $achievements['sqli'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['sqli'] ? htmlspecialchars(tr('Unlocked', 'مفتوح', currentLang()), ENT_QUOTES) : htmlspecialchars(tr('Locked', 'مقفل', currentLang()), ENT_QUOTES); ?></span>
             </div>
             <div class="achievement <?php echo $achievements['idor'] ? 'unlocked' : 'locked'; ?>" data-achievement="idor">
               <div class="status-dot"></div>
               <div>
-                <div class="fw-semibold" data-i18n="ach_idor_title">IDOR (idor_lab.php)</div>
+                <div class="fw-semibold" data-i18n="ach_idor_title">IDOR</div>
                 <div class="muted small" data-i18n="ach_idor_desc">Change the URL id to access hidden profile section</div>
               </div>
-              <span class="ms-auto badge <?php echo $achievements['idor'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['idor'] ? 'Unlocked' : 'Locked'; ?></span>
+              <span class="ms-auto badge <?php echo $achievements['idor'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['idor'] ? htmlspecialchars(tr('Unlocked', 'مفتوح', currentLang()), ENT_QUOTES) : htmlspecialchars(tr('Locked', 'مقفل', currentLang()), ENT_QUOTES); ?></span>
             </div>
             <div class="achievement <?php echo $achievements['xss'] ? 'unlocked' : 'locked'; ?>" data-achievement="xss">
               <div class="status-dot"></div>
               <div>
-                <div class="fw-semibold" data-i18n="ach_xss_title">Stored XSS (update_profile.php)</div>
+                <div class="fw-semibold" data-i18n="ach_xss_title">Stored XSS</div>
                 <div class="muted small" data-i18n="ach_xss_desc">Inject script into bio to trigger the flag</div>
               </div>
-              <span class="ms-auto badge <?php echo $achievements['xss'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['xss'] ? 'Unlocked' : 'Locked'; ?></span>
+              <span class="ms-auto badge <?php echo $achievements['xss'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['xss'] ? htmlspecialchars(tr('Unlocked', 'مفتوح', currentLang()), ENT_QUOTES) : htmlspecialchars(tr('Locked', 'مقفل', currentLang()), ENT_QUOTES); ?></span>
             </div>
             <div class="achievement <?php echo $achievements['cookie'] ? 'unlocked' : 'locked'; ?>" data-achievement="cookie">
               <div class="status-dot"></div>
               <div>
-                <div class="fw-semibold" data-i18n="ach_cookie_title">Cookie Tampering (cookie_lab.php)</div>
+                <div class="fw-semibold" data-i18n="ach_cookie_title">Cookie Tampering</div>
                 <div class="muted small" data-i18n="ach_cookie_desc">Edit your cookie to elevate privileges</div>
               </div>
-              <span class="ms-auto badge <?php echo $achievements['cookie'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['cookie'] ? 'Unlocked' : 'Locked'; ?></span>
+              <span class="ms-auto badge <?php echo $achievements['cookie'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['cookie'] ? htmlspecialchars(tr('Unlocked', 'مفتوح', currentLang()), ENT_QUOTES) : htmlspecialchars(tr('Locked', 'مقفل', currentLang()), ENT_QUOTES); ?></span>
             </div>
             <div class="achievement <?php echo $achievements['privesc'] ? 'unlocked' : 'locked'; ?>" data-achievement="privesc">
               <div class="status-dot"></div>
               <div>
-                <div class="fw-semibold" data-i18n="ach_privesc_title">Privilege Escalation (privesc_lab.php)</div>
+                <div class="fw-semibold" data-i18n="ach_privesc_title">Privilege Escalation</div>
                 <div class="muted small" data-i18n="ach_privesc_desc">Modify the role request to unlock the last flag</div>
               </div>
-              <span class="ms-auto badge <?php echo $achievements['privesc'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['privesc'] ? 'Unlocked' : 'Locked'; ?></span>
+              <span class="ms-auto badge <?php echo $achievements['privesc'] ? 'bg-success-subtle text-success' : 'bg-light text-dark'; ?>" data-status><?php echo $achievements['privesc'] ? htmlspecialchars(tr('Unlocked', 'مفتوح', currentLang()), ENT_QUOTES) : htmlspecialchars(tr('Locked', 'مقفل', currentLang()), ENT_QUOTES); ?></span>
             </div>
           </div>
         </div>
@@ -218,7 +213,11 @@ if ($achCount === 0) {
               <div class="me-3"><i class="fa-solid fa-flag fa-lg text-primary"></i></div>
               <div>
                 <div class="fw-semibold text-dark" data-i18n="lab_final_title">Final Flag</div>
-                <small class="muted" data-i18n="lab_final_desc">Finish line</small>
+                <?php if ($finalFlag): ?>
+                  <div class="flag mt-2"><?php echo htmlspecialchars($finalFlag, ENT_QUOTES); ?></div>
+                <?php else: ?>
+                  <small class="muted" data-i18n="lab_final_desc">Finish line</small>
+                <?php endif; ?>
               </div>
               <i class="fa-solid fa-arrow-right ms-auto text-primary"></i>
             </a>

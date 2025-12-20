@@ -1,15 +1,64 @@
 <?php
 session_start();
 include 'db.php';
+require_once 'helpers.php';
 
-// Redirect guests to login
 if (empty($_SESSION['user_id'])) {
   header('Location: index.php');
   exit;
 }
-// TODO: Require authenticated user
-// TODO: Verify that all achievements are completed before returning final flag
-// TODO: Record completion in database
+
+$userId = (int) $_SESSION['user_id'];
+$userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
+$userStmt->bind_param('i', $userId);
+$userStmt->execute();
+$userResult = $userStmt->get_result();
+$currentUser = $userResult ? $userResult->fetch_assoc() : null;
+if (!$currentUser) {
+  header('Location: logout.php');
+  exit;
+}
+$navProfileId = (int) $currentUser['id'];
+
+$achievements = getUserAchievements($connection, $userId);
+$lang = currentLang();
+$labKeys = ['sqli', 'idor', 'xss', 'cookie', 'privesc'];
+$achCount = 0;
+foreach ($labKeys as $k) {
+  $achCount += !empty($achievements[$k]) ? 1 : 0;
+}
+$achTotal = 5;
+$progressPercent = $achTotal > 0 ? round(($achCount / $achTotal) * 100) : 0;
+
+$masterCode = getFlagValue($connection, 'final_code', 'FTF-MASTER-KEY-204');
+$finalFlagValue = getFlagValue($connection, 'final', 'FLAG{FIND_THE_FIVE_COMPLETE}');
+$finalFlag = null;
+$finalMessage = null;
+$finalType = 'info';
+$lang = currentLang();
+
+if ($achCount === $achTotal) {
+  updateFinalIfComplete($connection, $userId, 'all_labs');
+  $finalFlag = $finalFlagValue;
+  $finalMessage = tr('All achievements complete. Final flag unlocked.', 'جميع الإنجازات مكتملة، العلم النهائي مفتوح.', $lang);
+  $finalType = 'success';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$finalFlag) {
+  $code = trim($_POST['master_code'] ?? '');
+  if ($code === '') {
+    $finalMessage = tr('Please enter a master code.', 'الرجاء إدخال الرمز الرئيسي.', $lang);
+    $finalType = 'danger';
+  } elseif (strcasecmp($code, $masterCode) === 0) {
+    $finalFlag = $finalFlagValue;
+    $finalMessage = tr('Correct master code. Final flag revealed.', 'الرمز صحيح، تم كشف العلم النهائي.', $lang);
+    $finalType = 'success';
+    markFinalCompletion($connection, $userId, 'master_code');
+  } elseif (!$finalFlag) {
+    $finalMessage = tr('Master code is incorrect.', 'الرمز غير صحيح.', $lang);
+    $finalType = 'danger';
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +82,10 @@ if (empty($_SESSION['user_id'])) {
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav ms-auto align-items-center">
           <li class="nav-item"><a class="nav-link" href="dashboard.php" data-i18n="nav_dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.php?id=1" data-i18n="nav_profile">Profile</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.php?id=<?php echo htmlspecialchars((string) $navProfileId, ENT_QUOTES); ?>" data-i18n="nav_profile">Profile</a></li>
+          <?php if (($currentUser['role'] ?? 'user') === 'admin'): ?>
+            <li class="nav-item"><a class="nav-link" href="admin.php" data-i18n="nav_admin">Admin</a></li>
+          <?php endif; ?>
           <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="logout.php" data-i18n="nav_logout">Logout</a></li>
         </ul>
         <div class="ms-3 d-flex gap-1">
@@ -50,17 +101,17 @@ if (empty($_SESSION['user_id'])) {
       <div class="col-lg-7">
         <div class="pill mb-2" data-i18n="final_badge"><i class="fa-solid fa-flag"></i> Final flag</div>
         <h2 class="mb-1" data-i18n="final_title">Finish line</h2>
-        <p class="muted mb-0" data-i18n="final_subtitle">You should now have 5 lab flags. Combine your knowledge or inspect the page to discover the master code that reveals the final trophy flag.</p>
+        <p class="muted mb-0" data-i18n="final_subtitle">Complete all five labs or enter the master code to unlock the final flag.</p>
       </div>
       <div class="col-lg-5 mt-3 mt-lg-0">
         <div class="soft-card p-3">
-          <div class="fw-semibold mb-1" data-i18n="final_progress_title">Completion check</div>
-          <div class="progress mb-2" role="progressbar">
-            <div class="progress-bar" id="finalProgressBar"></div>
+            <div class="fw-semibold mb-1" data-i18n="final_progress_title">Completion check</div>
+            <div class="progress mb-2" role="progressbar">
+              <div class="progress-bar" id="finalProgressBar" style="width: <?php echo $progressPercent; ?>%;"></div>
+            </div>
+          <small class="muted" data-i18n="final_progress_note"><?php echo htmlspecialchars(tr('Progress is stored in MySQL and reflected here.', 'التقدم محفوظ في MySQL ويظهر هنا.', $lang), ENT_QUOTES); ?></small>
           </div>
-          <small class="muted" data-i18n="final_progress_note">Progress is stored locally in your browser for demo purposes.</small>
         </div>
-      </div>
     </div>
 
     <div class="row g-4">
@@ -68,17 +119,30 @@ if (empty($_SESSION['user_id'])) {
         <div class="card p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0" data-i18n="final_form_title">Submit master code</h5>
-            <span class="chip pill-warning" data-i18n="final_form_chip">Client-side leak</span>
+            <span class="chip pill-warning" data-i18n="final_form_chip">Master code</span>
           </div>
-          <div id="alertPlaceholder"></div>
-          <p class="muted" data-i18n="final_form_desc">Somewhere in the client (source, devtools, JS) there's a hardcoded master code. Enter it below to unlock the final flag. Completing all 5 achievements also auto-unlocks.</p>
-          <form id="finalFlagForm">
+          <p class="muted" data-i18n="final_form_desc">Enter the master code for this lab, or complete all five achievements to unlock the final flag automatically.</p>
+          <form id="finalFlagForm" method="POST" action="flag_lab.php">
             <div class="mb-3">
               <label class="form-label" data-i18n="final_field_label">Master code</label>
-              <input type="text" class="form-control" id="finalCodeInput" placeholder="FTF-????-????" data-i18n-placeholder="final_field_placeholder">
+              <input type="text" class="form-control" id="finalCodeInput" name="master_code" placeholder="FTF-????-????" data-i18n-placeholder="final_field_placeholder">
             </div>
             <button class="btn btn-primary w-100" type="submit" data-i18n="final_reveal_btn">Reveal final flag</button>
           </form>
+          <?php if ($finalMessage): ?>
+            <div class="alert alert-<?php echo htmlspecialchars($finalType, ENT_QUOTES); ?> mt-3"><?php echo htmlspecialchars($finalMessage, ENT_QUOTES); ?></div>
+          <?php endif; ?>
+          <button class="btn btn-outline-primary btn-sm w-100 mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#finalAnswer" aria-expanded="false" aria-controls="finalAnswer" data-i18n="answer_toggle">Show answer</button>
+          <div class="collapse mt-3" id="finalAnswer">
+            <div class="alert alert-info mb-0">
+              <div class="fw-semibold" data-i18n="answer_title">Answer</div>
+              <div class="small">
+                <span data-i18n="final_answer_label">Enter this master code:</span>
+                <code><?php echo htmlspecialchars($masterCode, ENT_QUOTES); ?></code>
+              </div>
+              <div class="small muted" data-i18n="final_answer_alt">Or complete all five labs to unlock it.</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -88,12 +152,12 @@ if (empty($_SESSION['user_id'])) {
             <h5 class="mb-0" data-i18n="final_flag_title">Final flag</h5>
             <span class="chip pill-success" data-i18n="final_flag_chip">Trophy</span>
           </div>
-          <div class="flag hidden-flag" id="finalFlag" data-flag-key="final"></div>
-          <button class="btn btn-outline-primary w-100 mt-3" type="button" id="finalFlagSubmit" data-i18n="final_submit_btn">Submit flag (frontend)</button>
-          <div class="alert alert-light border mt-3">
-            <div class="fw-semibold" data-i18n="final_note_title">Note</div>
-            <span data-i18n="final_note_text">This submission is cosmetic. Backend validation will be added later.</span>
-          </div>
+          <?php if ($finalFlag): ?>
+            <div class="flag" id="finalFlag"><?php echo htmlspecialchars($finalFlag, ENT_QUOTES); ?></div>
+          <?php else: ?>
+            <div class="flag hidden-flag" id="finalFlag"></div>
+            <div class="muted small mt-2">Finish all labs or enter the master code to reveal the flag.</div>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -105,6 +169,11 @@ if (empty($_SESSION['user_id'])) {
     </div>
   </footer>
 
+  <script>
+    // Seed client state from server so the frontend UI matches database progress
+    window.__serverAchievements = <?php echo json_encode($achievements); ?>;
+    localStorage.setItem('ftf_achievements', JSON.stringify(window.__serverAchievements));
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

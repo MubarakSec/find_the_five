@@ -12,6 +12,15 @@ $userId = (int) $_SESSION['user_id'];
 $expectedFlag = getFlagValue($connection, 'cookie', 'FLAG{COOKIE_TRUST_IS_BAD}');
 $flagMessage = null;
 $flagType = 'info';
+$cookieFlag = null;
+$lang = currentLang();
+
+if (!isset($_COOKIE['access_level'])) {
+  setcookie('access_level', 'learner', time() + 86400, '/');
+  $_COOKIE['access_level'] = 'learner';
+}
+$accessLevel = strtolower((string) ($_COOKIE['access_level'] ?? 'learner'));
+$hasAdminCookie = in_array($accessLevel, ['admin', 'elite'], true);
 
 // Load current user for nav.
 $userStmt = $connection->prepare('SELECT id, name, username, email, role FROM users WHERE id = ? LIMIT 1');
@@ -24,18 +33,29 @@ if (!$currentUser) {
   exit;
 }
 $navProfileId = (int) $currentUser['id'];
+$achievements = getUserAchievements($connection, $userId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $submitted = trim($_POST['flag'] ?? '');
   if ($submitted === '') {
-    $flagMessage = 'Please enter a flag value.';
+    $flagMessage = tr('Please enter a flag value.', 'الرجاء إدخال قيمة العلم.', $lang);
     $flagType = 'danger';
   } elseif ($submitted !== $expectedFlag) {
-    $flagMessage = 'Flag is incorrect. Check the access_level cookie.';
+    $flagMessage = tr('Flag is incorrect. Check the access_level cookie.', 'العلم غير صحيح، تحقق من كوكي access_level.', $lang);
     $flagType = 'danger';
   } else {
     unlockAchievement($connection, $userId, 'cookie');
-    $flagMessage = 'Cookie flag accepted. Achievement unlocked.';
+    $flagMessage = tr('Cookie flag accepted. Achievement unlocked.', 'تم قبول العلم وفتح الإنجاز.', $lang);
+    $flagType = 'success';
+    $cookieFlag = $expectedFlag;
+  }
+}
+
+if ($hasAdminCookie) {
+  $cookieFlag = $expectedFlag;
+  unlockAchievement($connection, $userId, 'cookie');
+  if (!$flagMessage) {
+    $flagMessage = tr('Cookie indicates elevated access. Flag unlocked.', 'الكوكي تشير لصلاحية مرتفعة، تم فتح العلم.', $lang);
     $flagType = 'success';
   }
 }
@@ -95,11 +115,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
           <div class="mb-3">
             <label class="form-label" data-i18n="cookie_current_label">Current cookies</label>
-            <textarea class="form-control" rows="4" readonly><?php echo htmlspecialchars(http_build_query($_COOKIE, '', '; ') ?: 'No cookies found.', ENT_QUOTES); ?></textarea>
+            <div class="small muted mb-1"><?php echo htmlspecialchars(tr('Detected', 'القيمة الحالية', $lang), ENT_QUOTES); ?> <code>access_level</code>: <span class="badge bg-primary-subtle text-primary"><?php echo htmlspecialchars($accessLevel, ENT_QUOTES); ?></span></div>
+            <textarea class="form-control" rows="4" readonly><?php echo htmlspecialchars(http_build_query($_COOKIE, '', '; ') ?: tr('No cookies found.', 'لا توجد كوكيز.', $lang), ENT_QUOTES); ?></textarea>
           </div>
-          <div class="alert alert-info mt-3">
-            <div class="fw-semibold" data-i18n="cookie_goal_title">Goal</div>
-            <span data-i18n-html="cookie_goal_text">Set <code>access_level=elite</code> or <code>access_level=admin</code> then refresh. You can use browser devtools to edit cookies.</span>
+          <button class="btn btn-outline-primary btn-sm w-100" type="button" data-bs-toggle="collapse" data-bs-target="#cookieHint" aria-expanded="false" aria-controls="cookieHint" data-i18n="hint_toggle">Show hint</button>
+          <div class="collapse mt-3" id="cookieHint">
+            <div class="alert alert-info mb-0">
+              <div class="fw-semibold" data-i18n="cookie_goal_title">Goal</div>
+              <span data-i18n-html="cookie_goal_text">Change the <code>access_level</code> cookie to a higher privilege value, then refresh. You can use browser devtools to edit cookies.</span>
+            </div>
+          </div>
+          <button class="btn btn-outline-primary btn-sm w-100 mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#cookieAnswer" aria-expanded="false" aria-controls="cookieAnswer" data-i18n="answer_toggle">Show answer</button>
+          <div class="collapse mt-3" id="cookieAnswer">
+            <div class="alert alert-info mb-0">
+              <div class="fw-semibold" data-i18n="answer_title">Answer</div>
+              <div class="small" data-i18n-html="cookie_answer">Open browser devtools, edit the <code>access_level</code> cookie to <code>admin</code>, refresh the page, and the flag will appear.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -111,6 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span class="chip" data-i18n="cookie_flag_chip">Hidden</span>
           </div>
           <p class="muted small mb-2" data-i18n="cookie_flag_desc">When the cookie indicates admin access, the restricted flag appears.</p>
+          <?php if ($cookieFlag): ?>
+            <div class="flag mb-2" id="cookieFlag"><?php echo htmlspecialchars($cookieFlag, ENT_QUOTES); ?></div>
+          <?php else: ?>
+            <div class="flag hidden-flag mb-2" id="cookieFlag"></div>
+          <?php endif; ?>
           <?php if ($flagMessage): ?>
             <div class="alert alert-<?php echo htmlspecialchars($flagType, ENT_QUOTES); ?> mt-3"><?php echo htmlspecialchars($flagMessage, ENT_QUOTES); ?></div>
           <?php endif; ?>
@@ -130,6 +166,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </footer>
 
+  <script>
+    window.__serverAchievements = <?php echo json_encode($achievements); ?>;
+    localStorage.setItem('ftf_achievements', JSON.stringify(window.__serverAchievements));
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/app.js"></script>
 </body>

@@ -84,8 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h1 class="mb-3" data-i18n="login_title">Sign in to hunt all five flags</h1>
         <p class="muted" data-i18n="login_subtitle">Discover vulnerabilities, unlock achievements, and level up your security mindset. No external tools required.</p>
         <div class="d-flex gap-3 mt-4">
-          <div class="badge-lock unlocked" data-i18n="ui_only_badge"><i class="fa-solid fa-lock-open"></i> UI only — backend placeholder</div>
-          <div class="badge-lock" data-i18n="mysql_later_badge"><i class="fa-solid fa-database"></i> MySQL schema will be added later</div>
+          <div class="badge-lock unlocked" data-i18n="ui_only_badge"><i class="fa-solid fa-lock-open"></i> Backend connected</div>
+          <div class="badge-lock" data-i18n="mysql_later_badge"><i class="fa-solid fa-database"></i> Live MySQL</div>
         </div>
       </div>
       <div class="col-lg-6 mt-4 mt-lg-0">
