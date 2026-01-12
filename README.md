@@ -22,9 +22,9 @@ PHP front-end labs for five core web vulns. Built as a university assignment to 
 - Assets: `assets/css/style.css`, `assets/js/app.js`, `assets/screenshots/`
 
 ## Screenshots
-![Login](assets/screenshots/login.png)
-![Dashboard](assets/screenshots/dashboard.png)
-![SQLi Lab](assets/screenshots/sqli-lab.png)
+![Login]([./assets/screenshots/login.png](https://raw.githubusercontent.com/USERNAME/REPO/main/assets/screenshots/login.png))
+![Dashboard]([./assets/screenshots/dashboard.png](https://raw.githubusercontent.com/USERNAME/REPO/main/assets/screenshots/dashboard.png))
+![SQLi Lab]([./assets/screenshots/sqli-lab.png](https://raw.githubusercontent.com/USERNAME/REPO/main/assets/screenshots/sqli-lab.png))
 
 ## Backend next steps
 - Real auth/authorization + sessions
