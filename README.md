@@ -25,9 +25,3 @@ PHP front-end labs for five core web vulns. Built as a university assignment to 
 ![Login](assets/screenshots/login.png)
 ![Dashboard](assets/screenshots/dashboard.png)
 ![SQLi Lab](assets/screenshots/sqli-lab.png)
-
-## Backend next steps
-- Real auth/authorization + sessions
-- DB migrations/queries using `for_us/`
-- Input validation/output encoding everywhere
-- Server-backed flags/achievements (replace `localStorage`)
