@@ -1,65 +1,25 @@
-Database Schema Overview
-========================
+Database Schema (MySQL)
+=======================
 
-This document describes the MySQL tables that back the “Find The Five” training app. The current project is UI-only; these tables will be used later when server-side logic is implemented.
+Use `find_the_five` (UTF8MB4). Import `schema.sql`, then `data.sql`, then `user.sql` for seeds.
 
-Database
---------
-- `find_the_five`: main database (UTF8MB4).
-
-Tables
-------
-- `users`
-  - Purpose: store authentication and roles.
-  - Key columns:
-    - `id` INT UNSIGNED PK.
-    - `name` VARCHAR(120), `username` VARCHAR(60) UNIQUE, `email` VARCHAR(120) UNIQUE.
-    - `password_hash` VARCHAR(255) for hashed passwords (e.g., bcrypt).
-    - `role` ENUM('user','admin') to gate admin panel.
-    - `created_at`, `updated_at` timestamps.
-- `profiles`
-  - Purpose: hold user profile content (bio + avatar).
-  - Key columns:
-    - `id` INT UNSIGNED PK.
-    - `user_id` INT UNSIGNED FK → `users.id` (1:1), ON DELETE CASCADE.
-    - `bio` TEXT (sanitize/escape on output to prevent XSS).
-    - `avatar_url` VARCHAR(255).
-    - `created_at`, `updated_at` timestamps.
-- `achievements`
-  - Purpose: track lab completion per user.
-  - Key columns:
-    - `id` INT UNSIGNED PK.
-    - `user_id` INT UNSIGNED FK → `users.id` (1:1), ON DELETE CASCADE.
-    - `sqli`, `idor`, `xss`, `cookie`, `privesc` TINYINT(1) flags (0/1).
-    - `final` TINYINT(1) for final completion/flag unlock.
-    - `completed_at` DATETIME when final completion is recorded (nullable).
-    - `updated_at` TIMESTAMP for last change.
-- `audit_logs`
-  - Purpose: lightweight audit trail for lab events.
-  - Key columns:
-    - `id` INT UNSIGNED PK.
-    - `user_id` INT UNSIGNED FK → `users.id` (many:1), ON DELETE CASCADE.
-    - `event_type` VARCHAR(80) (e.g., `achievement_unlock`, `final_unlock`).
-    - `event_context` VARCHAR(160) (e.g., `sqli`, `master_code`).
-    - `ip_address` VARCHAR(45), `user_agent` VARCHAR(255).
-    - `created_at` TIMESTAMP for event time.
-- `flags`
-  - Purpose: store per-lab secrets and final master code/flag server-side.
-  - Key columns:
-    - `lab_key` VARCHAR(50) PK (e.g., `sqli`, `idor`, `cookie`, `privesc`, `final_code`, `final_flag`).
-    - `flag_value` TEXT containing the secret value.
-    - `updated_at` TIMESTAMP for last change.
+Tables (key columns only)
+-------------------------
+- `users`: `id` PK, `name`, `username` UNIQUE, `email` UNIQUE, `password_hash`, `role` ENUM('user','admin'), `created_at`, `updated_at`.
+- `profiles`: `id` PK, `user_id` FK→`users.id` (1:1, cascade), `bio`, `avatar_url`, timestamps.
+- `achievements`: `id` PK, `user_id` FK→`users.id` (1:1, cascade), `sqli`, `idor`, `xss`, `cookie`, `privesc`, `final` (TINYINT), `completed_at`, `updated_at`.
+- `audit_logs`: `id` PK, `user_id` FK→`users.id` (many:1), `event_type`, `event_context`, `ip_address`, `user_agent`, `created_at`.
+- `flags`: `lab_key` PK (e.g., `sqli`, `idor`, `cookie`, `privesc`, `final_code`, `final_flag`), `flag_value`, `updated_at`.
 
 Relationships
 -------------
-- `users` 1:1 `profiles` (unique `user_id`).
-- `users` 1:1 `achievements` (unique `user_id`).
-- `users` 1:many `audit_logs` (foreign key `user_id`).
+- `users` 1:1 `profiles`
+- `users` 1:1 `achievements`
+- `users` 1:many `audit_logs`
 
-Usage notes (future backend)
-----------------------------
-- Use parameterized queries for all reads/writes.
-- Set `password_hash` via `password_hash()` (PHP) and verify with `password_verify()`.
-- On registration: create `users`, then `profiles`, then `achievements` rows in a transaction.
-- On logout: destroy session server-side; never trust cookies for roles.
-- Prevent IDOR by checking `user_id` from session before loading profiles/achievements.
+Backend notes
+-------------
+- Parameterize all queries; use `password_hash`/`password_verify`.
+- Registration flow: create `users` → `profiles` → `achievements` in one transaction.
+- Enforce session-based access to profiles/achievements to prevent IDOR.
+- Destroy sessions server-side on logout; never trust cookies for roles.

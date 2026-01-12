@@ -1,45 +1,33 @@
-Find The Five — Security Training App (UI Only)
-================================================
+# Find The Five — Security Training App
 
-Frontend-only PHP pages that illustrate five web vulnerabilities. Backend logic is intentionally missing so students can implement authentication, database access, and validation later.
+PHP front-end labs for five core web vulns. Built as a university assignment to demonstrate backend/security fundamentals; backend hooks are stubbed so you can plug in real auth/DB/validation.
 
-Project layout
---------------
-- [x] `index.php` – login UI (guest)
-- [x] `register.php` – signup UI (guest)
-- [x] `dashboard.php` – achievements overview (user)
-- [x] `profile.php?id=?` – view profile (user)
-- [x] `update_profile.php` – edit bio + stored XSS lab
-- `sqli_lab.php` – SQL injection lab
-- `idor_lab.php` – IDOR lab
-- `cookie_lab.php` – cookie tampering lab
-- [-] `privesc_lab.php` – privilege escalation lab
-- [x] `flag_lab.php` – final flag page
-- [-] `admin.php` – Security Supervisor Panel (mock)
-- [x] `logout.php` – logout placeholder
-- [x] `db.php` – future MySQL connection stub
-- [x] `assets/css/style.css` – custom styling
-- `assets/js/app.js` – frontend helpers for flags/achievements
+## Run it
+- PHP 8+; from project root: `php -S localhost:8000`
+- Go to `http://localhost:8000/index.php`
 
-How to view
------------
-Open any PHP file in a local web server (e.g., `php -S localhost:8000`). All pages are static; achievements are stored in `localStorage` only.
+## Labs
+- `sqli_lab.php` — SQL injection bypass (`' OR '1'='1`)
+- `idor_lab.php` — change `?id=` to access another record
+- `update_profile.php` — stored XSS in the bio field
+- `cookie_lab.php` — tamper `access_level` → `elite`/`admin`
+- `privesc_lab.php` — forged `"role": "admin"` payload
+- `flag_lab.php` — final flag via master code or all achievements
 
-Backend TODOs
--------------
-Every PHP file starts with `session_start()` and contains comments like “TODO: Implement login logic”. No business logic, database code, or validation is present. `db.php` only outlines the planned table structures.
+## Files at a glance
+- UIs: `index.php`, `register.php`, `dashboard.php`
+- Labs: `sqli_lab.php`, `idor_lab.php`, `update_profile.php`, `cookie_lab.php`, `privesc_lab.php`, `flag_lab.php`
+- Support: `admin.php`, `db.php`, `helpers.php`
+- Data: `for_us/` (`schema.sql`, `data.sql`, `user.sql`, docs)
+- Assets: `assets/css/style.css`, `assets/js/app.js`, `assets/screenshots/`
 
-Labs and flags (client side)
-----------------------------
-- SQLi: classic `' OR '1'='1` bypass reveals flag (set by JS only).
-- IDOR: change `?id=` in `idor_lab.php` to load another record (flag set by JS).
-- Stored XSS: inject `<script>` in the bio to trigger the flag (flag set by JS).
-- Cookie tampering: edit `access_level` cookie to `elite`/`admin` (flag set by JS).
-- Privilege escalation: set `"role": "admin"` in request payload (flag set by JS).
-- Final flag: enter the master code from the page source or finish all five achievements to reveal it (flag set by JS).
+## Screenshots
+![Login](assets/screenshots/login.png)
+![Dashboard](assets/screenshots/dashboard.png)
+![SQLi Lab](assets/screenshots/sqli-lab.png)
 
-Notes
------
-- Uses Bootstrap 5 + Font Awesome from CDN, custom styling in `assets/css/style.css`.
-- All interactive actions are mock only; server-side validation will be added later.
-- Footer branding: “Find The Five — Security Training App v1.0”.
+## Backend next steps
+- Real auth/authorization + sessions
+- DB migrations/queries using `for_us/`
+- Input validation/output encoding everywhere
+- Server-backed flags/achievements (replace `localStorage`)

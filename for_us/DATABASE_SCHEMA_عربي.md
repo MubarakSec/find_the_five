@@ -1,35 +1,25 @@
-دليل قاعدة البيانات (مبسط وبالعربي)
-====================================
+دليل قاعدة البيانات (مبسط)
+===========================
 
-ملخص سريع للجداول الأساسية. الأسماء تبقى بالإنجليزية كما في MySQL لتسهيل التنفيذ.
+قاعدة البيانات: `find_the_five` (UTF8MB4). ثبّت بالترتيب: `schema.sql` ثم `data.sql` ثم `user.sql`.
 
-الأساس
-------
-- قاعدة البيانات: `find_the_five` (ترميز UTF8MB4).
-
-الجداول
--------
-- `users`: حسابات المستخدمين وصلاحياتهم.
-  - أهم الأعمدة: `id`, `name`, `username` (فريد), `email` (فريد), `password_hash`, `role` (`user` أو `admin`), وتواريخ الإنشاء/التحديث.
-- `profiles`: ملف شخصي لكل مستخدم (واحد مقابل واحد).
-  - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), `bio`, `avatar_url`, وتواريخ الإنشاء/التحديث.
-- `achievements`: حالة إنجاز كل لاب لكل مستخدم (واحد مقابل واحد).
-  - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), أعلام 0/1 لـ `sqli`, `idor`, `xss`, `cookie`, `privesc`, وحقل `final` لتسجيل اكتمال النهائي، مع `completed_at` وتواريخ الإنشاء/التحديث.
-- `audit_logs`: سجل خفيف للأحداث (Audit).
-  - أهم الأعمدة: `id`, `user_id` (يرتبط بـ `users.id`), `event_type` (مثل `achievement_unlock`), `event_context` (مثل `sqli`)، وعناوين IP/المتصفح، وتاريخ الحدث.
-- `flags`: قيم الفلاج لكل لاب + الكود/الفلاج النهائي.
-  - أهم الأعمدة: `lab_key` (مثل `sqli`, `idor`, `cookie`, `privesc`, `final_code`, `final_flag`), القيمة في `flag_value`, وتاريخ التحديث.
+الجداول (أعمدة أساسية)
+----------------------
+- `users`: `id`, `name`, `username` (فريد), `email` (فريد), `password_hash`, `role` (`user`/`admin`), تواريخ.
+- `profiles`: `id`, `user_id` (FK إلى `users.id`، 1:1، حذف متتابع), `bio`, `avatar_url`, تواريخ.
+- `achievements`: `id`, `user_id` (1:1), أعلام 0/1 لـ `sqli`, `idor`, `xss`, `cookie`, `privesc`, وحقل `final`, مع `completed_at` و`updated_at`.
+- `audit_logs`: `id`, `user_id` (1:many), `event_type`, `event_context`, `ip_address`, `user_agent`, `created_at`.
+- `flags`: `lab_key` (مفتاح أساسي: `sqli`, `idor`, `cookie`, `privesc`, `final_code`, `final_flag`), `flag_value`, `updated_at`.
 
 العلاقات
 --------
-- كل صف في `profiles` مرتبط بصف واحد في `users` عبر `user_id`.
-- كل صف في `achievements` مرتبط بصف واحد في `users` عبر `user_id`.
-- يمكن أن يمتلك المستخدم عدة سجلات في `audit_logs` عبر `user_id`.
+- `users` 1:1 `profiles`
+- `users` 1:1 `achievements`
+- `users` 1:many `audit_logs`
 
 نصائح سريعة
 -----------
-- استخدم Prepared Statements لكل استعلام.
-- خزن كلمات المرور بـ `password_hash()`، وتحقق بـ `password_verify()`.
-- أثناء التسجيل: أنشئ المستخدم، ثم الملف الشخصي، ثم الإنجازات داخل معاملة واحدة.
-- لا تعتمد على الكوكيز لتحديد الدور؛ اعتمد على الـ session.
-- قبل إرجاع أي بيانات حساسة، تأكد أن `user_id` يطابق جلسة المستخدم (لمنع IDOR).
+- استخدم Prepared Statements دائمًا؛ `password_hash`/`password_verify` للمرور.
+- تسجيل مستخدم: أنشئ `users` → `profiles` → `achievements` في معاملة واحدة.
+- اربط كل استعلام بالجلسة (Session) لمنع IDOR، ولا تعتمد على الكوكيز للأدوار.
+- دمّر الجلسة عند تسجيل الخروج.

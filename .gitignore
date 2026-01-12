@@ -2,3 +2,4 @@
 .gitignore
 map.txt
 assets/uploads/
+node_modules/
